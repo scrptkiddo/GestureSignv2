@@ -25,8 +25,19 @@ jobs:
       - name: NuGet restore (packages.config)
         run: nuget restore GestureSign.sln
 
+      - name: Locate an installed Windows SDK winmd
+        shell: pwsh
+        run: |
+          $winmd = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\UnionMetadata\*\Windows.winmd" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Directory.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.Directory.Name } -Descending |
+            Select-Object -First 1
+          if (-not $winmd) { Write-Error "No Windows.winmd found under UnionMetadata"; exit 1 }
+          Write-Host "Using winmd: $($winmd.FullName)"
+          "WINMD_HINT=$($winmd.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Build classic solution (Release, Any CPU)
-        run: msbuild GestureSign.sln /p:Configuration=Release /p:Platform="Any CPU" /m /verbosity:minimal
+        run: msbuild GestureSign.sln /p:Configuration=Release /p:Platform="Any CPU" /p:WindowsWinmdHintPath="$env:WINMD_HINT" /m /verbosity:minimal
 
       - name: Upload classic build
         uses: actions/upload-artifact@v4

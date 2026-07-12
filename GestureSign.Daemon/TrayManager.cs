@@ -106,7 +106,7 @@ namespace GestureSign.Daemon
             {
                 case TrayIconState.Disabled:
                     _currentTrayIcon = CreateStatusIcon(Color.FromArgb(220, 38, 38), true);
-                    _trayIcon.Text = "GestureSign - 手势识别已关闭";
+                    _trayIcon.Text = "GestureSign - Gesture recognition disabled";
                     break;
                 case TrayIconState.Training:
                     _currentTrayIcon = CreateStatusIcon(Color.FromArgb(37, 99, 235), false);

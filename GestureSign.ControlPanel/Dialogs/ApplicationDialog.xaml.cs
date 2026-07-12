@@ -171,7 +171,7 @@ namespace GestureSign.ControlPanel.Dialogs
             }
             catch (Exception ex)
             {
-                MatchStringTextBox.Text = LocalizationProvider.Instance.GetTextValue("Messages.Error") + "：" + ex.Message;
+                MatchStringTextBox.Text = LocalizationProvider.Instance.GetTextValue("Messages.Error") + ": " + ex.Message;
             }
         }
 

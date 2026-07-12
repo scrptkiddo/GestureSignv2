@@ -183,7 +183,7 @@ namespace GestureSign.Daemon.Surface
             if (_penWidth > 0 && points != null && points.Any(p => p.Count > 1))
                 DrawCompleteGesture(points);
 
-            DrawActionHint(string.IsNullOrWhiteSpace(text) ? "已触发" : text.Trim());
+            DrawActionHint(string.IsNullOrWhiteSpace(text) ? "Triggered" : text.Trim());
             UpdateFullSurface(0);
 
             StartGestureHintFade(false);

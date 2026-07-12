@@ -20,14 +20,10 @@ namespace GestureSign.Common.Localization
 
         protected LocalizationProvider()
         {
-            try
-            {
-                _cultureInfo = String.IsNullOrEmpty(AppConfig.CultureName) ? CultureInfo.CurrentUICulture : CultureInfo.CreateSpecificCulture(AppConfig.CultureName);
-            }
-            catch
-            {
-                _cultureInfo = CultureInfo.CurrentUICulture;
-            }
+            // English-only fork: always use English regardless of the saved
+            // setting (AppConfig.CultureName) or the system UI locale, so the
+            // interface is English on every machine.
+            _cultureInfo = new CultureInfo(DefaultLanguageName);
         }
 
         public bool HasData

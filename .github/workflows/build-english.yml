@@ -1,0 +1,56 @@
+name: Build English-only GestureSign
+
+# English-only fork build.
+# - build-classic:  the .NET Framework 4.8.1 solution (Daemon + ControlPanel + plugins)
+# - build-winui:    the .NET 8 / WinUI 3 modern front-end (self-contained, win-x64)
+# Both jobs are independent so one still produces an artifact if the other fails.
+
+on:
+  push:
+    branches: [english-only]
+  workflow_dispatch:
+
+jobs:
+  build-classic:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: NuGet restore (packages.config)
+        run: nuget restore GestureSign.sln
+
+      - name: Build classic solution (Release, Any CPU)
+        run: msbuild GestureSign.sln /p:Configuration=Release /p:Platform="Any CPU" /m /verbosity:minimal
+
+      - name: Upload classic build
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestureSign-classic-en-Release
+          path: bin/Release/
+          if-no-files-found: error
+
+  build-winui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish WinUI front-end (win-x64, self-contained)
+        run: dotnet publish GestureSign.WinUI/GestureSign.WinUI.csproj -c Release -r win-x64 --self-contained true -o publish/winui-x64
+
+      - name: Upload WinUI build
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestureSign-WinUI-en-win-x64
+          path: publish/winui-x64/
+          if-no-files-found: error

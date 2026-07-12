@@ -248,7 +248,9 @@ public sealed partial class MainWindow : Window
     }
 
     private bool IsDark => Root.ActualTheme == ElementTheme.Dark;
-    private UiLanguage CurrentLanguage => ResolveUiLanguage(_uiCultureName);
+    // English-only fork: always present the UI in English, ignoring the saved
+    // CultureName setting and the system locale.
+    private UiLanguage CurrentLanguage => UiLanguage.English;
     private Style BodyStrongTextBlockStyle => _bodyStrongTextBlockStyle;
 
     private string T(string zh, string en) => L(zh, en, zh, zh, zh);
@@ -300,7 +302,8 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var culture = CultureInfo.GetCultureInfo(ResolveUiCultureName(cultureName));
+            // English-only fork: force English formatting regardless of the setting.
+            var culture = CultureInfo.GetCultureInfo("en-US");
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
             CultureInfo.DefaultThreadCurrentCulture = culture;

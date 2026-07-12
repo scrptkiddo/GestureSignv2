@@ -72,5 +72,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: GestureSign-WinUI-en-win-x64
-          path: publish/winui-x64/
+          path: GestureSign.WinUI/publish/winui-x64/
           if-no-files-found: error

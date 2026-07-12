@@ -726,7 +726,7 @@ namespace GestureSign.Common.Applications
             var name = app.Name ?? string.Empty;
             return app is UserApp &&
                 (string.Equals(name, "浏览器", StringComparison.OrdinalIgnoreCase) ||
-                 name.StartsWith("Browsers(", StringComparison.OrdinalIgnoreCase) ||
+                 name.StartsWith("Browsers", StringComparison.OrdinalIgnoreCase) ||
                  matchString.IndexOf("firefox", StringComparison.OrdinalIgnoreCase) >= 0 &&
                  matchString.IndexOf("chrome", StringComparison.OrdinalIgnoreCase) >= 0);
         }

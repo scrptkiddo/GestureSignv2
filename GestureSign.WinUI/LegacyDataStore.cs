@@ -790,9 +790,9 @@ internal sealed class LegacyDataStore
                 matchString.Contains("firefox", StringComparison.OrdinalIgnoreCase) &&
                 matchString.Contains("chrome", StringComparison.OrdinalIgnoreCase))
             {
-                if (name != "浏览器")
+                if (name != "Browsers")
                 {
-                    app["Name"] = "浏览器";
+                    app["Name"] = "Browsers";
                     changed = true;
                 }
 

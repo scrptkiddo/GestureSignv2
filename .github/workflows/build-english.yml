@@ -56,8 +56,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # WinUI 3 PRI generation needs the AppxPackage MSBuild task that ships
+      # with Visual Studio's MSBuild (missing from the plain dotnet SDK), so
+      # restore + publish via msbuild rather than `dotnet publish`.
+      - name: Restore WinUI
+        run: msbuild GestureSign.WinUI/GestureSign.WinUI.csproj /t:Restore /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64
+
       - name: Publish WinUI front-end (win-x64, self-contained)
-        run: dotnet publish GestureSign.WinUI/GestureSign.WinUI.csproj -c Release -r win-x64 --self-contained true -o publish/winui-x64
+        run: msbuild GestureSign.WinUI/GestureSign.WinUI.csproj /t:Publish /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:PublishDir=publish\winui-x64\ /verbosity:minimal
 
       - name: Upload WinUI build
         uses: actions/upload-artifact@v4

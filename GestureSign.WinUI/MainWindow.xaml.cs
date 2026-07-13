@@ -2334,14 +2334,17 @@ public sealed partial class MainWindow : Window
             switch (command)
             {
                 case "打开配置文件夹":
+                case "Open config folder":
                     Directory.CreateDirectory(_legacyData.RoamingPath);
                     Process.Start(new ProcessStartInfo("explorer.exe", _legacyData.RoamingPath) { UseShellExecute = true });
                     break;
                 case "备份":
+                case "Backup":
                     var backupPath = _legacyData.CreateBackup();
                     await ShowInfoDialog("Backup complete", backupPath);
                     break;
                 case "恢复":
+                case "Restore":
                     await RestoreArchiveAsync();
                     break;
                 case "退出":
@@ -4017,10 +4020,10 @@ public sealed partial class MainWindow : Window
     {
         var name = new TextBox { PlaceholderText = "Gesture name", Text = "NewGesture" };
         var fingerCount = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 2 };
-        foreach (var item in new[] { "1 指", "2 指", "3 指", "4 指", "5 指" })
+        foreach (var item in new[] { "1 finger", "2 fingers", "3 fingers", "4 fingers", "5 fingers" })
             fingerCount.Items.Add(item);
         var direction = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 0 };
-        foreach (var item in new[] { "向右", "向左", "向上", "向下", "左上", "右上", "左下", "右下" })
+        foreach (var item in new[] { "Right", "Left", "Up", "Down", "Upper-left", "Upper-right", "Lower-left", "Lower-right" })
             direction.Items.Add(item);
 
         var panel = NewCardPanel(0);
@@ -4031,7 +4034,7 @@ public sealed partial class MainWindow : Window
         if (!await ConfirmDialogAsync("New gesture", panel, "Add"))
             return;
 
-        _legacyData.AddGesture(name.Text, fingerCount.SelectedIndex + 1, direction.SelectedItem?.ToString() ?? "向右");
+        _legacyData.AddGesture(name.Text, fingerCount.SelectedIndex + 1, direction.SelectedItem?.ToString() ?? "Right");
         ReloadData();
     }
 
@@ -4122,7 +4125,7 @@ public sealed partial class MainWindow : Window
     {
         var name = new TextBox { PlaceholderText = "Gesture name", Text = gesture?.Name ?? "NewGesture" };
         var fingerCount = new ComboBox { Margin = new Thickness(0, 8, 0, 8), SelectedIndex = Math.Clamp((gesture?.FingerCount ?? 3) - 1, 0, 4) };
-        foreach (var item in new[] { "1 指", "2 指", "3 指", "4 指", "5 指" })
+        foreach (var item in new[] { "1 finger", "2 fingers", "3 fingers", "4 fingers", "5 fingers" })
             fingerCount.Items.Add(item);
 
         var sample = new System.Collections.Generic.List<(double X, double Y)>();
@@ -5217,33 +5220,33 @@ public sealed partial class MainWindow : Window
         var message = ExtractLogMessage(line);
 
         if (message.StartsWith("Mouse gesture button down.", StringComparison.Ordinal))
-            return $"{time} [按键] 鼠标{TranslateMouseButton(ExtractField(message, "Button"))}按下，坐标 {ExtractFieldToEnd(message, "Point")}";
+            return $"{time} [Button] Mouse {TranslateMouseButton(ExtractField(message, "Button"))} down, at {ExtractFieldToEnd(message, "Point")}";
 
         if (message.StartsWith("Gesture capture started.", StringComparison.Ordinal))
-            return $"{time} [开始] {TranslateDevice(ExtractField(message, "Device"))}，{ExtractField(message, "Contacts")} 个触点，模式 {TranslateMode(ExtractField(message, "Mode"))}";
+            return $"{time} [Start] {TranslateDevice(ExtractField(message, "Device"))}, {ExtractField(message, "Contacts")} contacts, mode {TranslateMode(ExtractField(message, "Mode"))}";
 
         if (message.StartsWith("Gesture capture ended.", StringComparison.Ordinal))
-            return $"{time} [结束] {TranslateDevice(ExtractField(message, "Device"))}，{ExtractField(message, "Strokes")} 条轨迹，{ExtractField(message, "Points")} 个点";
+            return $"{time} [End] {TranslateDevice(ExtractField(message, "Device"))}, {ExtractField(message, "Strokes")} strokes, {ExtractField(message, "Points")} points";
 
         if (message.StartsWith("Gesture capture canceled", StringComparison.Ordinal))
-            return $"{time} [取消] 捕捉被取消";
+            return $"{time} [Cancel] Capture canceled";
 
         if (message.StartsWith("Gesture recognized.", StringComparison.Ordinal))
-            return $"{time} [识别] 手势 {ExtractField(message, "Name")}，触点 {ExtractField(message, "Contacts")}";
+            return $"{time} [Recognized] Gesture {ExtractField(message, "Name")}, contacts {ExtractField(message, "Contacts")}";
 
         if (message.StartsWith("Gesture not recognized.", StringComparison.Ordinal))
-            return $"{time} [未识别] 没有匹配到手势";
+            return $"{time} [Not recognized] No gesture matched";
 
         if (message.StartsWith("Gesture action lookup completed.", StringComparison.Ordinal))
-            return $"{time} [查找] 手势 {ExtractField(message, "Gesture")}，匹配 {ExtractField(message, "Actions")} 个动作，设备 {TranslateDevice(ExtractField(message, "Device"))}";
+            return $"{time} [Lookup] Gesture {ExtractField(message, "Gesture")}, matched {ExtractField(message, "Actions")} actions, device {TranslateDevice(ExtractField(message, "Device"))}";
 
         if (message.StartsWith("Gesture action completed without executing any command.", StringComparison.Ordinal))
-            return $"{time} [未执行] 没有可用命令";
+            return $"{time} [No command] No command available";
 
         if (message.StartsWith("Gesture command executing.", StringComparison.Ordinal))
         {
             var plugin = ExtractField(message, "Plugin").Split('.').LastOrDefault() ?? "";
-            return $"{time} [执行] 动作 {ExtractField(message, "Action")}，命令 {ExtractField(message, "Command")}，插件 {plugin}";
+            return $"{time} [Execute] Action {ExtractField(message, "Action")}, command {ExtractField(message, "Command")}, plugin {plugin}";
         }
 
         return $"{time} {message}";

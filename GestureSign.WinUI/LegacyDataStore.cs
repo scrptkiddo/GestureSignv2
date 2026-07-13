@@ -116,8 +116,8 @@ internal sealed class LegacyDataStore
             OneDriveSyncEnabled = oneDriveSyncEnabled,
             OneDriveSyncPath = oneDrivePath,
             DataSource = actionsPath is null || actionsFromDefaults
-                ? "默认配置"
-                : "用户配置"
+                ? "Default config"
+                : "User config"
         };
     }
 
@@ -141,7 +141,7 @@ internal sealed class LegacyDataStore
     public void SetOneDriveSyncEnabled(bool enabled)
     {
         var targetPath = enabled
-            ? GetOneDriveApplicationDataPath() ?? throw new InvalidOperationException("未检测到 OneDrive 文件夹。")
+            ? GetOneDriveApplicationDataPath() ?? throw new InvalidOperationException("OneDrive folder not detected.")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ApplicationDataFolderName);
 
         CopyConfigurationFiles(targetPath, ActionsPath, GesturesPath, ConfigPath);
@@ -283,7 +283,7 @@ internal sealed class LegacyDataStore
         _actionsRoot.Insert(0, new JsonObject
         {
             ["$type"] = "GestureSign.Common.Applications.GlobalApp, GestureSign.Common",
-            ["Name"] = "(全局动作)",
+            ["Name"] = "(Global Actions)",
             ["MatchUsing"] = 4,
             ["IsEnabled"] = true,
             ["Actions"] = new JsonArray()
@@ -697,7 +697,7 @@ internal sealed class LegacyDataStore
             return new LegacyApplication
             {
                 Source = app,
-                Name = app.StringValue("Name", "(未命名程序)"),
+                Name = app.StringValue("Name", "(Unnamed application)"),
                 Group = app.StringValue("Group", ""),
                 Type = AppType(app.StringValue("$type", "")),
                 MatchUsing = app.IntValue("MatchUsing", 0),
@@ -731,7 +731,7 @@ internal sealed class LegacyDataStore
         return new LegacyAction
         {
             Source = action,
-            Name = action.StringValue("Name", "(未命名动作)"),
+            Name = action.StringValue("Name", "(Unnamed action)"),
             GestureName = action.StringValue("GestureName", ""),
             Condition = action.StringValue("Condition", ""),
             IsEnabled = action.BoolValue("IsEnabled", true),
@@ -743,7 +743,7 @@ internal sealed class LegacyDataStore
             Commands = commands?.OfType<JsonObject>().Select(command => new LegacyCommand
             {
                 Source = command,
-                Name = command.StringValue("Name", "(未命名命令)"),
+                Name = command.StringValue("Name", "(Unnamed command)"),
                 Settings = command.StringValue("CommandSettings", ""),
                 PluginClass = command.StringValue("PluginClass", ""),
                 PluginFilename = command.StringValue("PluginFilename", ""),
@@ -761,7 +761,7 @@ internal sealed class LegacyDataStore
                 return new LegacyGesture
                 {
                     Source = gesture,
-                    Name = gesture.StringValue("Name", "(未命名手势)"),
+                    Name = gesture.StringValue("Name", "(Unnamed gesture)"),
                     FingerCount = Math.Max(1, patternCount),
                     PointPatterns = pointPatterns
                 };

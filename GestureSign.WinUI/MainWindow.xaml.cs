@@ -665,7 +665,7 @@ public sealed partial class MainWindow : Window
         var userApps = _legacyData.Applications.Where(app => app.Type != "忽略").ToList();
         appsPanel.Children.Add(NewCardHeader(L("程序", "Applications", "程式", "アプリ", "프로그램"), $"{L("添加、编辑、删除或按分组管理匹配程序。数据源:", "Add, edit, delete, or group matching applications. Source:", "新增、編輯、刪除或依群組管理比對程式。資料來源:", "一致するアプリを追加、編集、削除、グループ管理します。データ元:", "매칭 프로그램을 추가, 편집, 삭제하거나 그룹별로 관리합니다. 데이터 원본:")} {_legacyData.DataSource}", L("添加程序", "Add App", "新增程式", "アプリを追加", "프로그램 추가"), "添加程序"));
         AddActionScopeRow(appsPanel, "all", NewListRow(L("全部动作", "All Actions", "全部動作", "すべてのアクション", "모든 동작"), CountText(userApps.Sum(app => app.Actions.Count), L("个动作", "actions", "個動作", "個のアクション", "개 동작")), null, _selectedActionScope == "all", () => SelectActionScope("all")));
-        foreach (var group in userApps.GroupBy(app => string.IsNullOrWhiteSpace(app.Group) ? "(默认)" : app.Group))
+        foreach (var group in userApps.GroupBy(app => string.IsNullOrWhiteSpace(app.Group) ? "(Default)" : app.Group))
         {
             var groupKey = $"group:{group.Key}";
             if (ShouldShowApplicationGroup(group.Key))
@@ -845,7 +845,7 @@ public sealed partial class MainWindow : Window
         if (_selectedActionScope.StartsWith("group:", StringComparison.Ordinal))
         {
             var groupName = _selectedActionScope["group:".Length..];
-            return applications.Where(app => string.Equals(string.IsNullOrWhiteSpace(app.Group) ? "(默认)" : app.Group, groupName, StringComparison.Ordinal));
+            return applications.Where(app => string.Equals(string.IsNullOrWhiteSpace(app.Group) ? "(Default)" : app.Group, groupName, StringComparison.Ordinal));
         }
 
         if (_selectedActionScope.StartsWith("app:", StringComparison.Ordinal))
@@ -895,7 +895,7 @@ public sealed partial class MainWindow : Window
         => $"app:{app.Name}|{app.MatchUsing}|{app.MatchString}";
 
     private static bool ShouldShowApplicationGroup(string groupName)
-        => !string.Equals(groupName, "(默认)", StringComparison.OrdinalIgnoreCase) &&
+        => !string.Equals(groupName, "(Default)", StringComparison.OrdinalIgnoreCase) &&
            !string.Equals(groupName, "Internet", StringComparison.OrdinalIgnoreCase);
 
     private UIElement BuildGesturesPage()
@@ -1286,8 +1286,8 @@ public sealed partial class MainWindow : Window
         var existingCommand = existingAction?.Commands.FirstOrDefault();
         var name = new TextBox
         {
-            PlaceholderText = "命令名称",
-            Text = existingCommand?.Name ?? "发送快捷键"
+            PlaceholderText = "Command name",
+            Text = existingCommand?.Name ?? "Send shortcut"
         };
         var plugin = new ComboBox
         {
@@ -1297,14 +1297,14 @@ public sealed partial class MainWindow : Window
         AddPluginItems(plugin);
         var pluginClass = new TextBox
         {
-            PlaceholderText = "自定义插件类名",
+            PlaceholderText = "Custom plugin class name",
             Text = existingCommand?.PluginClass ?? PluginClassFromIndex(plugin.SelectedIndex),
             Margin = new Thickness(0, 8, 0, 0)
         };
         var settings = new TextBox
         {
             Text = existingCommand?.Settings ?? "",
-            PlaceholderText = "命令设置 JSON，可留空",
+            PlaceholderText = "Command settings JSON (optional)",
             Margin = new Thickness(0, 8, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             AcceptsReturn = true,
@@ -1314,7 +1314,7 @@ public sealed partial class MainWindow : Window
         var appPicker = NewCommandAppPicker(plugin, pluginClass, settings);
         var enabled = new CheckBox
         {
-            Content = "启用这个边缘",
+            Content = "Enable this edge",
             IsChecked = existingAction?.IsEnabled ?? true,
             Margin = new Thickness(0, 8, 0, 0)
         };
@@ -1346,11 +1346,11 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             XamlRoot = Root.XamlRoot,
-            Title = $"编辑{title}",
+            Title = $"Edit {title}",
             Content = NewDialogScrollContent(panel),
-            PrimaryButtonText = "保存",
-            SecondaryButtonText = existingAction is null ? "" : "清空",
-            CloseButtonText = "取消",
+            PrimaryButtonText = "Save",
+            SecondaryButtonText = existingAction is null ? "" : "Clear",
+            CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
         var result = await dialog.ShowAsync();
@@ -1366,7 +1366,7 @@ public sealed partial class MainWindow : Window
         var pluginClassValue = pluginClass.Text.Trim();
         if (string.IsNullOrWhiteSpace(pluginClassValue))
         {
-            await ShowInfoDialog("插件类名为空", "请选择一个操作，或填写自定义插件类名。");
+            await ShowInfoDialog("Plugin class name is empty", "Please select an action, or enter a custom plugin class name.");
             return;
         }
 
@@ -1382,7 +1382,7 @@ public sealed partial class MainWindow : Window
 
         if (action is null)
         {
-            await ShowInfoDialog("保存失败", "没有找到可写入的全局动作。");
+            await ShowInfoDialog("Save failed", "No writable global action was found.");
             return;
         }
 
@@ -1419,7 +1419,7 @@ public sealed partial class MainWindow : Window
         if (globalApp is null || action is null)
             return;
 
-        if (confirm && !await ConfirmDialogAsync("清空边缘动作", $"确定清空{title}？", "清空"))
+        if (confirm && !await ConfirmDialogAsync("Clear edge actions", $"Clear {title}?", "Clear"))
             return;
 
         _legacyData.DeleteAction(globalApp, action);
@@ -1436,7 +1436,7 @@ public sealed partial class MainWindow : Window
         _legacyData.EnsureGlobalApplication();
         _legacyData = LegacyDataStore.Load();
         return GetGlobalApplication()
-            ?? throw new InvalidOperationException("无法创建全局动作配置。");
+            ?? throw new InvalidOperationException("Failed to create the global action configuration.");
     }
 
     private LegacyApplication? GetGlobalApplication()
@@ -1618,9 +1618,9 @@ public sealed partial class MainWindow : Window
 
         root.Children.Add(NewSettingsGroup(L("系统", "System", "系統", "システム", "시스템"),
         [
-            NewComboRow(L("语言", "Language", "語言", "言語", "언어"), [L("跟随系统", "Follow system", "跟隨系統", "システムに合わせる", "시스템 설정 따르기"), "简体中文", "English", "繁體中文（台灣）", "日本語", "한국어"], ["", "zh-CN", "en-US", "zh-TW", "ja-JP", "ko-KR"], "CultureName", CultureIndex(_uiCultureName)),
+            NewComboRow(L("语言", "Language", "語言", "言語", "언어"), [L("跟随系统", "Follow system", "跟隨系統", "システムに合わせる", "시스템 설정 따르기"), "Simplified Chinese", "English", "Traditional Chinese (Taiwan)", "Japanese", "Korean"], ["", "zh-CN", "en-US", "zh-TW", "ja-JP", "ko-KR"], "CultureName", CultureIndex(_uiCultureName)),
             NewToggleRow(L("启用初始超时", "Enable initial timeout", "啟用初始逾時", "初期タイムアウトを有効にする", "초기 시간 제한 사용"), options.InitialTimeout > 0, "InitialTimeout", options.InitialTimeout == 0 ? "1000" : options.InitialTimeout.ToString(), "0"),
-            NewSliderRow(L("初始超时", "Initial timeout", "初始逾時", "初期タイムアウト", "초기 시간 제한"), options.InitialTimeout / 1000d, 0, 2, 0.1, "InitialTimeout", value => ((int)Math.Round(value * 1000)).ToString(CultureInfo.InvariantCulture), value => CurrentLanguage == UiLanguage.English ? $"{value:0.0} sec" : $"{value:0.0} 秒"),
+            NewSliderRow(L("初始超时", "Initial timeout", "初始逾時", "初期タイムアウト", "초기 시간 제한"), options.InitialTimeout / 1000d, 0, 2, 0.1, "InitialTimeout", value => ((int)Math.Round(value * 1000)).ToString(CultureInfo.InvariantCulture), value => CurrentLanguage == UiLanguage.English ? $"{value:0.0} sec" : $"{value:0.0} sec"),
             NewStartupToggleRow(),
             NewAdminStartupToggleRow(options.RunAsAdmin),
             NewToggleRow(L("排除全屏游戏/应用", "Ignore fullscreen games/apps", "排除全螢幕遊戲/應用程式", "全画面ゲーム/アプリを除外", "전체 화면 게임/앱 제외"), options.IgnoreFullScreen, "IgnoreFullScreen"),
@@ -1815,7 +1815,7 @@ public sealed partial class MainWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.Children.Add(new TextBlock
         {
-            Text = "Kando 菜单",
+            Text = "Kando menu",
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 8, 0, 0),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
@@ -1856,11 +1856,11 @@ public sealed partial class MainWindow : Window
             {
                 content.Children.Add(new TextBlock
                 {
-                    Text = "没有读取到 Kando 菜单。请先打开 Kando 设置创建菜单，或检查 %APPDATA%\\kando\\menus.json。",
+                    Text = "No Kando menu was found. Open Kando settings to create a menu, or check %APPDATA%\\kando\\menus.json.",
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.72
                 });
-                content.Children.Add(NewLightTextOption("菜单名称", selectedMenuName, "KandoMenuName", "例如: 示例菜单"));
+                content.Children.Add(NewLightTextOption("Menu name", selectedMenuName, "KandoMenuName", "e.g. Sample menu"));
                 return;
             }
 
@@ -1872,10 +1872,10 @@ public sealed partial class MainWindow : Window
             {
                 var menu = menus[index];
                 var isSelected = index == selectedIndex;
-                var shortcutText = $"快捷键: {DisplayFallback(menu.Shortcut)}";
+                var shortcutText = $"Shortcut: {DisplayFallback(menu.Shortcut)}";
                 var trailing = new TextBlock
                 {
-                    Text = isSelected ? "已选择" : "选择",
+                    Text = isSelected ? "Selected" : "Select",
                     Opacity = isSelected ? 0.9 : 0.62,
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -1901,7 +1901,7 @@ public sealed partial class MainWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.Children.Add(new TextBlock
         {
-            Text = "唤起快捷键",
+            Text = "Activation shortcut",
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
@@ -1910,7 +1910,7 @@ public sealed partial class MainWindow : Window
         recorderBox.Margin = new Thickness(0);
         recorderBox.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-        var clear = NewPillButton("清除", false);
+        var clear = NewPillButton("Clear", false);
         clear.Click += (_, _) =>
         {
             if (ReferenceEquals(_activeHotKeyRecorder, recorderBox))
@@ -1967,9 +1967,9 @@ public sealed partial class MainWindow : Window
         var content = NewCardPanel();
         content.Children.Add(new Image { Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/logo.png")), Width = 72, Height = 72, HorizontalAlignment = HorizontalAlignment.Left });
         content.Children.Add(new TextBlock { Text = "GestureSign V2", Style = ResourceStyle("TitleTextBlockStyle"), Margin = new Thickness(0, 12, 0, 0) });
-        content.Children.Add(new TextBlock { Text = $"WinUI 3 前端重构预览\n版本：{AppVersion}", Opacity = 0.72, Margin = new Thickness(0, 4, 0, 0) });
-        content.Children.Add(new TextBlock { Text = "作者: TransposonY\n发现问题或建议欢迎反馈: 553078206@qq.com\nQQ 交流群: 576981420", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 16, 0, 0) });
-        content.Children.Add(NewSmallCommandBar(["打开官网", "Windows 应用商店版", "发送反馈", "查看日志"]));
+        content.Children.Add(new TextBlock { Text = $"WinUI 3 front-end preview\nVersion: {AppVersion}", Opacity = 0.72, Margin = new Thickness(0, 4, 0, 0) });
+        content.Children.Add(new TextBlock { Text = "Author: TransposonY\nFeedback and suggestions welcome: 553078206@qq.com\nQQ group: 576981420", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 16, 0, 0) });
+        content.Children.Add(NewSmallCommandBar(["Open Website", "Windows Store Version", "Send Feedback", "View Logs"]));
         root.Children.Add(NewCard(content));
         root.Children.Add(NewInfoCard("Project Page", "https://github.com/TransposonY/GestureSign", "Thanks: highsign, MahApps.Metro, WGestures."));
         return root;
@@ -2196,19 +2196,19 @@ public sealed partial class MainWindow : Window
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
         var mode = new ComboBox { Width = 120, SelectedIndex = 0 };
         mode.Items.Add("exe");
-        mode.Items.Add("标题");
-        mode.Items.Add("类名");
-        var pick = NewPillButton("拾取鼠标所在窗口", false);
+        mode.Items.Add("Title");
+        mode.Items.Add("Class name");
+        var pick = NewPillButton("Pick window under cursor", false);
         pick.Click += async (_, _) =>
         {
             pick.IsEnabled = false;
-            pick.Content = "移动鼠标并左键单击目标窗口";
+            pick.Content = "Move the mouse and left-click the target window";
             var info = await PickWindowByClickAsync();
-            pick.Content = "拾取鼠标所在窗口";
+            pick.Content = "Pick window under cursor";
             pick.IsEnabled = true;
             if (info is null)
             {
-                await ShowInfoDialog("拾取失败", "没有拾取到目标窗口。请重新点击拾取，然后在目标窗口上左键单击。");
+                await ShowInfoDialog("Pick failed", "No target window was picked. Click Pick again, then left-click on the target window.");
                 return;
             }
 
@@ -2230,7 +2230,7 @@ public sealed partial class MainWindow : Window
         var variable = new ComboBox { Width = 130, SelectedIndex = 0 };
         foreach (var item in new[] { "start_X", "start_X%", "start_Y", "start_Y%", "end_X", "end_X%", "end_Y", "end_Y%", "ID" })
             variable.Items.Add(item);
-        var insert = NewPillButton("插入变量", false);
+        var insert = NewPillButton("Insert variable", false);
         insert.Click += (_, _) =>
         {
             var token = $"finger_{finger.SelectedItem}_{variable.SelectedItem}";
@@ -2311,7 +2311,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             LogException(ex);
-            await ShowInfoDialog("操作失败", ex.Message);
+            await ShowInfoDialog("Operation failed", ex.Message);
         }
     }
 
@@ -2339,7 +2339,7 @@ public sealed partial class MainWindow : Window
                     break;
                 case "备份":
                     var backupPath = _legacyData.CreateBackup();
-                    await ShowInfoDialog("备份完成", backupPath);
+                    await ShowInfoDialog("Backup complete", backupPath);
                     break;
                 case "恢复":
                     await RestoreArchiveAsync();
@@ -2384,10 +2384,10 @@ public sealed partial class MainWindow : Window
                 case "下载列表":
                     await DownloadSharedSettingsAsync();
                     break;
-                case "查看日志":
+                case "View Logs":
                     await ShowLogAsync();
                     break;
-                case "发送反馈":
+                case "Send Feedback":
                     await SendFeedbackAsync();
                     break;
                 default:
@@ -2396,31 +2396,31 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            await ShowInfoDialog("操作失败", ex.Message);
+            await ShowInfoDialog("Operation failed", ex.Message);
         }
     }
 
     private async Task AddApplicationAsync(bool ignored)
     {
-        var name = new TextBox { PlaceholderText = ignored ? "忽略项名称" : "程序名称", Text = ignored ? "新忽略项" : "新程序" };
-        var matchText = new TextBox { PlaceholderText = "窗口标题、类名或 exe", Margin = new Thickness(0, 8, 0, 0) };
-        var group = new TextBox { PlaceholderText = "分组，可留空", Margin = new Thickness(0, 8, 0, 0) };
+        var name = new TextBox { PlaceholderText = ignored ? "Ignored item name" : "Application name", Text = ignored ? "New ignored item" : "New application" };
+        var matchText = new TextBox { PlaceholderText = "Window title, class name, or exe", Margin = new Thickness(0, 8, 0, 0) };
+        var group = new TextBox { PlaceholderText = "Group (optional)", Margin = new Thickness(0, 8, 0, 0) };
         var matchUsing = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 1 };
-        matchUsing.Items.Add("窗口标题");
-        matchUsing.Items.Add("可执行文件");
-        matchUsing.Items.Add("窗口类");
-        var regex = new CheckBox { Content = "使用正则匹配", Margin = new Thickness(0, 8, 0, 0) };
+        matchUsing.Items.Add("Window title");
+        matchUsing.Items.Add("Executable");
+        matchUsing.Items.Add("Window class");
+        var regex = new CheckBox { Content = "Use regex matching", Margin = new Thickness(0, 8, 0, 0) };
         var panel = NewCardPanel(12);
-        panel.Children.Add(NewDialogField("程序名称", "用于在动作页列表中显示，建议填写容易识别的名称。", name));
-        panel.Children.Add(NewDialogField("匹配文本", "后台会用这里的文本匹配窗口。可执行文件示例: msedge.exe；多个程序可用 | 分隔。", matchText));
-        panel.Children.Add(NewDialogField("从运行中程序选择", "自动填入程序名称和可执行文件名，适合普通桌面程序。", NewRunningProcessPicker(name, matchText, matchUsing)));
-        panel.Children.Add(NewDialogField("拾取窗口", "点击后在目标窗口上单击，可按 exe、标题或类名提取匹配信息。", NewWindowPicker(name, matchText, matchUsing)));
+        panel.Children.Add(NewDialogField("Application name", "Shown in the action page list; use an easily recognizable name.", name));
+        panel.Children.Add(NewDialogField("Match text", "The daemon uses this text to match windows. Example executable: msedge.exe; separate multiple programs with |.", matchText));
+        panel.Children.Add(NewDialogField("Choose from running programs", "Auto-fills the application name and executable; suitable for normal desktop programs.", NewRunningProcessPicker(name, matchText, matchUsing)));
+        panel.Children.Add(NewDialogField("Pick window", "After clicking, click the target window to extract match info by exe, title, or class name.", NewWindowPicker(name, matchText, matchUsing)));
         if (!ignored)
-            panel.Children.Add(NewDialogField("分组", "可留空。相同分组会在动作页中归在一起，方便管理。", group));
-        panel.Children.Add(NewDialogField("匹配方式", "可执行文件最稳定；窗口标题适合标题固定的窗口；窗口类适合系统窗口或特殊程序。", matchUsing));
-        panel.Children.Add(NewDialogField("正则匹配", "开启后匹配文本会作为正则表达式处理，例如 chrome|firefox 可匹配多个浏览器。", regex));
+            panel.Children.Add(NewDialogField("Group", "Optional. Applications in the same group are shown together on the action page for easier management.", group));
+        panel.Children.Add(NewDialogField("Match method", "Executable is most stable; window title suits windows with a fixed title; window class suits system windows or special programs.", matchUsing));
+        panel.Children.Add(NewDialogField("Regex matching", "When enabled, the match text is treated as a regular expression, e.g. chrome|firefox matches multiple browsers.", regex));
 
-        if (!await ConfirmDialogAsync(ignored ? "添加忽略项" : "添加程序", panel, "添加"))
+        if (!await ConfirmDialogAsync(ignored ? "Add ignored item" : "Add application", panel, "Add"))
             return;
 
         var matchUsingValue = matchUsing.SelectedIndex switch { 0 => 1, 1 => 2, 2 => 0, _ => 2 };
@@ -2433,34 +2433,34 @@ public sealed partial class MainWindow : Window
 
     private async Task EditApplicationAsync(LegacyApplication app)
     {
-        var name = new TextBox { PlaceholderText = "名称", Text = app.Name };
-        var matchText = new TextBox { PlaceholderText = "窗口标题、类名或 exe", Text = app.MatchString, Margin = new Thickness(0, 8, 0, 0) };
-        var group = new TextBox { PlaceholderText = "分组，可留空", Text = app.Group, Margin = new Thickness(0, 8, 0, 0) };
+        var name = new TextBox { PlaceholderText = "Name", Text = app.Name };
+        var matchText = new TextBox { PlaceholderText = "Window title, class name, or exe", Text = app.MatchString, Margin = new Thickness(0, 8, 0, 0) };
+        var group = new TextBox { PlaceholderText = "Group (optional)", Text = app.Group, Margin = new Thickness(0, 8, 0, 0) };
         var matchUsing = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = app.MatchUsing switch { 1 => 0, 0 => 2, 3 => 2, _ => 1 } };
-        matchUsing.Items.Add("窗口标题");
-        matchUsing.Items.Add("可执行文件");
-        matchUsing.Items.Add("窗口类");
-        var regex = new CheckBox { Content = "使用正则匹配", IsChecked = app.IsRegEx, Margin = new Thickness(0, 8, 0, 0) };
-        var enabled = new CheckBox { Content = "启用", IsChecked = app.IsEnabled, Margin = new Thickness(0, 8, 0, 0) };
-        var limitFingers = new TextBox { PlaceholderText = "限制手指数，0 表示不限", Text = app.LimitNumberOfFingers.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
-        var blockThreshold = new TextBox { PlaceholderText = "触摸阻断阈值", Text = app.BlockTouchInputThreshold.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
+        matchUsing.Items.Add("Window title");
+        matchUsing.Items.Add("Executable");
+        matchUsing.Items.Add("Window class");
+        var regex = new CheckBox { Content = "Use regex matching", IsChecked = app.IsRegEx, Margin = new Thickness(0, 8, 0, 0) };
+        var enabled = new CheckBox { Content = "Enable", IsChecked = app.IsEnabled, Margin = new Thickness(0, 8, 0, 0) };
+        var limitFingers = new TextBox { PlaceholderText = "Finger limit, 0 = unlimited", Text = app.LimitNumberOfFingers.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
+        var blockThreshold = new TextBox { PlaceholderText = "Touch block threshold", Text = app.BlockTouchInputThreshold.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
 
         var panel = NewCardPanel(12);
-        panel.Children.Add(NewDialogField("程序名称", "用于在动作页列表中显示，建议填写容易识别的名称。", name));
-        panel.Children.Add(NewDialogField("匹配文本", "后台会用这里的文本匹配窗口。可执行文件示例: msedge.exe；多个程序可用 | 分隔。", matchText));
-        panel.Children.Add(NewDialogField("从运行中程序选择", "自动填入程序名称和可执行文件名，适合普通桌面程序。", NewRunningProcessPicker(name, matchText, matchUsing)));
-        panel.Children.Add(NewDialogField("拾取窗口", "点击后在目标窗口上单击，可按 exe、标题或类名提取匹配信息。", NewWindowPicker(name, matchText, matchUsing)));
+        panel.Children.Add(NewDialogField("Application name", "Shown in the action page list; use an easily recognizable name.", name));
+        panel.Children.Add(NewDialogField("Match text", "The daemon uses this text to match windows. Example executable: msedge.exe; separate multiple programs with |.", matchText));
+        panel.Children.Add(NewDialogField("Choose from running programs", "Auto-fills the application name and executable; suitable for normal desktop programs.", NewRunningProcessPicker(name, matchText, matchUsing)));
+        panel.Children.Add(NewDialogField("Pick window", "After clicking, click the target window to extract match info by exe, title, or class name.", NewWindowPicker(name, matchText, matchUsing)));
         if (app.Type != "忽略")
         {
-            panel.Children.Add(NewDialogField("分组", "可留空。相同分组会在动作页中归在一起，方便管理。", group));
-            panel.Children.Add(NewDialogField("限制手指数", "该程序允许识别的最大触点数。填 0 表示不限制；填 2 表示只响应 1 指和 2 指手势，忽略更多触点。", limitFingers));
-            panel.Children.Add(NewDialogField("触摸阻断阈值", "触摸屏/触控板专用。开始手势后达到这个触点数时阻止原始触摸输入，避免页面同时滚动或点击；鼠标手势通常不受影响。", blockThreshold));
+            panel.Children.Add(NewDialogField("Group", "Optional. Applications in the same group are shown together on the action page for easier management.", group));
+            panel.Children.Add(NewDialogField("Finger limit", "Maximum number of touch points recognized for this program. 0 = unlimited; 2 = respond only to 1- and 2-finger gestures and ignore more touches.", limitFingers));
+            panel.Children.Add(NewDialogField("Touch block threshold", "Touchscreen/touchpad only. When this many touch points are reached after a gesture starts, raw touch input is blocked to avoid simultaneous scrolling or clicking; mouse gestures are usually unaffected.", blockThreshold));
         }
-        panel.Children.Add(NewDialogField("匹配方式", "可执行文件最稳定；窗口标题适合标题固定的窗口；窗口类适合系统窗口或特殊程序。", matchUsing));
-        panel.Children.Add(NewDialogField("正则匹配", "开启后匹配文本会作为正则表达式处理，例如 chrome|firefox 可匹配多个浏览器。", regex));
-        panel.Children.Add(NewDialogField("启用状态", "关闭后该程序分组不会参与手势匹配，已有动作会保留。", enabled));
+        panel.Children.Add(NewDialogField("Match method", "Executable is most stable; window title suits windows with a fixed title; window class suits system windows or special programs.", matchUsing));
+        panel.Children.Add(NewDialogField("Regex matching", "When enabled, the match text is treated as a regular expression, e.g. chrome|firefox matches multiple browsers.", regex));
+        panel.Children.Add(NewDialogField("Enabled state", "When off, this application group won't participate in gesture matching; existing actions are kept.", enabled));
 
-        if (!await ConfirmDialogAsync($"编辑 {app.Name}", panel, "保存"))
+        if (!await ConfirmDialogAsync($"Edit {app.Name}", panel, "Save"))
             return;
 
         var matchUsingValue = matchUsing.SelectedIndex switch { 0 => 1, 1 => 2, 2 => 0, _ => 2 };
@@ -2470,7 +2470,7 @@ public sealed partial class MainWindow : Window
 
     private async Task DeleteApplicationAsync(LegacyApplication app)
     {
-        if (!await ConfirmDialogAsync("删除确认", $"确定删除 {app.Name}？", "删除"))
+        if (!await ConfirmDialogAsync("Confirm delete", $"Delete {app.Name}?", "Delete"))
             return;
         _legacyData.DeleteApplication(app);
         ReloadData();
@@ -2525,27 +2525,27 @@ public sealed partial class MainWindow : Window
     {
         if (app is null)
         {
-            await ShowInfoDialog("没有可用程序", "请先添加一个程序。");
+            await ShowInfoDialog("No applications available", "Please add an application first.");
             return;
         }
 
-        var name = new TextBox { PlaceholderText = "动作名称", Text = "新动作" };
-        var gesture = new TextBox { PlaceholderText = "手势名称，例如 3Right", Margin = new Thickness(0, 8, 0, 0) };
+        var name = new TextBox { PlaceholderText = "Action name", Text = "New action" };
+        var gesture = new TextBox { PlaceholderText = "Gesture name, e.g. 3Right", Margin = new Thickness(0, 8, 0, 0) };
         var drawnPointPatterns = new List<List<(double X, double Y)>>();
         var drawPanel = NewInlineGestureDrawingPanel(drawnPointPatterns, out var showRecordedGesture, out var clearGestureButton);
-        var trainingStatus = new TextBlock { Text = "可以直接绘制单指或多指图案，也可以用触控板录制真实轨迹。", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
-        var trainByTouchpad = NewPillButton("用触控板或触控录制", false);
+        var trainingStatus = new TextBlock { Text = "You can draw a single- or multi-finger pattern directly, or record a real path with the touchpad.", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
+        var trainByTouchpad = NewPillButton("Record with touchpad or touch", false);
         trainByTouchpad.Click += async (_, _) =>
         {
             var gestureName = ResolveGestureName(gesture, name.Text);
             SetGestureText(gesture, gestureName);
             await StartGestureTrainingForNameAsync(gestureName, trainingStatus, showRecordedGesture);
         };
-        var commandName = new TextBox { PlaceholderText = "命令名称", Text = "发送快捷键", Margin = new Thickness(0, 8, 0, 0) };
+        var commandName = new TextBox { PlaceholderText = "Command name", Text = "Send shortcut", Margin = new Thickness(0, 8, 0, 0) };
         var commandPlugin = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 0 };
         AddPluginItems(commandPlugin);
-        var commandPluginClass = new TextBox { PlaceholderText = "自定义插件类名", Text = PluginClassFromIndex(0), Margin = new Thickness(0, 8, 0, 0) };
-        var commandSettings = new TextBox { PlaceholderText = "命令设置 JSON，可留空", Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var commandPluginClass = new TextBox { PlaceholderText = "Custom plugin class name", Text = PluginClassFromIndex(0), Margin = new Thickness(0, 8, 0, 0) };
+        var commandSettings = new TextBox { PlaceholderText = "Command settings JSON (optional)", Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
         var commandHotkey = NewHotKeyRecorder(commandSettings, "");
         var commandAppPicker = NewCommandAppPicker(commandPlugin, commandPluginClass, commandSettings);
         var commandTypedSettings = NewTypedCommandSettingsEditor(commandPluginClass, commandSettings);
@@ -2591,11 +2591,11 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(name);
         panel.Children.Add(gesture);
         panel.Children.Add(NewBuiltInGesturePicker(gesture));
-        panel.Children.Add(new TextBlock { Text = "手势图案", Opacity = 0.68, Margin = new Thickness(0, 12, 0, 6) });
+        panel.Children.Add(new TextBlock { Text = "Gesture pattern", Opacity = 0.68, Margin = new Thickness(0, 12, 0, 6) });
         panel.Children.Add(drawPanel);
         panel.Children.Add(NewTwoColumnRow(clearGestureButton, trainByTouchpad));
         panel.Children.Add(trainingStatus);
-        panel.Children.Add(new TextBlock { Text = "要执行的命令", Opacity = 0.68, Margin = new Thickness(0, 16, 0, 0) });
+        panel.Children.Add(new TextBlock { Text = "Command to run", Opacity = 0.68, Margin = new Thickness(0, 16, 0, 0) });
         panel.Children.Add(commandName);
         panel.Children.Add(commandPlugin);
         panel.Children.Add(commandPluginClass);
@@ -2607,7 +2607,7 @@ public sealed partial class MainWindow : Window
         UpdateCommandEditor();
         var scrollOffsetsBeforeDialog = CaptureActionsPageScrollOffsets(PageHost);
         var mainScrollOffsetBeforeDialog = MainContentScrollViewer.VerticalOffset;
-        if (!await ConfirmDialogAsync($"给 {app.Name} 添加动作", panel, "添加"))
+        if (!await ConfirmDialogAsync($"Add action to {app.Name}", panel, "Add"))
             return;
 
         var validDrawnPointPatterns = drawnPointPatterns
@@ -2625,7 +2625,7 @@ public sealed partial class MainWindow : Window
         var finalGestureName = ResolveGestureName(gesture, "");
         if (string.IsNullOrWhiteSpace(finalGestureName))
         {
-            await ShowInfoDialog("缺少手势", "请先选择、输入或绘制一个手势。");
+            await ShowInfoDialog("Missing gesture", "Please select, enter, or draw a gesture first.");
             return;
         }
         SetGestureText(gesture, finalGestureName);
@@ -2633,7 +2633,7 @@ public sealed partial class MainWindow : Window
         var targetApp = FindMatchingApplication(app);
         if (targetApp is null)
         {
-            await ShowInfoDialog("程序分组已变化", "刚才录制手势后配置已刷新，请重新打开该分组再添加动作。");
+            await ShowInfoDialog("Application group changed", "The configuration refreshed after recording the gesture; please reopen the group and add the action again.");
             ReloadData();
             return;
         }
@@ -2664,23 +2664,23 @@ public sealed partial class MainWindow : Window
     {
         var originalApp = FindApplicationForAction(action);
         var originalActionIndex = originalApp?.Actions.ToList().FindIndex(candidate => ReferenceEquals(candidate.Source, action.Source)) ?? -1;
-        var name = new TextBox { PlaceholderText = "动作名称", Text = DisplayName(action.Name) };
-        var gesture = new TextBox { PlaceholderText = "手势名称", Margin = new Thickness(0, 8, 0, 0) };
+        var name = new TextBox { PlaceholderText = "Action name", Text = DisplayName(action.Name) };
+        var gesture = new TextBox { PlaceholderText = "Gesture name", Margin = new Thickness(0, 8, 0, 0) };
         SetGestureText(gesture, action.GestureName);
-        var condition = new TextBox { PlaceholderText = "触发条件，可留空", Text = action.Condition, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
-        var enabled = new CheckBox { Content = "启用", IsChecked = action.IsEnabled };
-        var activateWindow = new CheckBox { Content = "执行前激活目标窗口", IsChecked = action.ActivateWindow };
+        var condition = new TextBox { PlaceholderText = "Trigger condition (optional)", Text = action.Condition, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var enabled = new CheckBox { Content = "Enable", IsChecked = action.IsEnabled };
+        var activateWindow = new CheckBox { Content = "Activate target window before running", IsChecked = action.ActivateWindow };
         var mouseHotkey = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = MouseActionIndex(action.MouseHotkey) };
-        foreach (var item in new[] { "无鼠标快捷键", "滚轮前", "滚轮后", "左键", "右键", "中键", "X1 键", "X2 键" })
+        foreach (var item in new[] { "No mouse shortcut", "Wheel forward", "Wheel back", "Left button", "Right button", "Middle button", "X1 button", "X2 button" })
             mouseHotkey.Items.Add(item);
-        var ignoredDevices = new TextBox { PlaceholderText = "忽略设备位掩码，0 表示全部设备可触发", Text = action.IgnoredDevices.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
+        var ignoredDevices = new TextBox { PlaceholderText = "Ignored device bitmask, 0 = all devices can trigger", Text = action.IgnoredDevices.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 8, 0, 0) };
         var hotkeyJson = new TextBox { Text = action.HotkeyJson };
         var hotkeyRecorder = NewHotKeyRecorderWithClear(hotkeyJson, action.HotkeyJson, usesArrayKeyCode: false);
-        var continuousGestureJson = new TextBox { PlaceholderText = "连续手势 JSON，可留空", Text = action.ContinuousGestureJson, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 64 };
+        var continuousGestureJson = new TextBox { PlaceholderText = "Continuous gesture JSON (optional)", Text = action.ContinuousGestureJson, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 64 };
         var drawnPointPatterns = new List<List<(double X, double Y)>>();
         var drawPanel = NewInlineGestureDrawingPanel(drawnPointPatterns, out var showRecordedGesture, out var clearGestureButton);
-        var trainingStatus = new TextBlock { Text = "触控板或触控录制会使用后台识别服务捕捉真实多指轨迹。", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
-        var trainByTouchpad = NewPillButton("用触控板或触控录制", false);
+        var trainingStatus = new TextBlock { Text = "Touchpad or touch recording uses the background recognition service to capture real multi-finger paths.", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
+        var trainByTouchpad = NewPillButton("Record with touchpad or touch", false);
         trainByTouchpad.Click += async (_, _) =>
         {
             var gestureName = ResolveGestureName(gesture, name.Text);
@@ -2691,7 +2691,7 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(name);
         panel.Children.Add(gesture);
         panel.Children.Add(NewBuiltInGesturePicker(gesture));
-        panel.Children.Add(new TextBlock { Text = "手势图案", Opacity = 0.68, Margin = new Thickness(0, 12, 0, 6) });
+        panel.Children.Add(new TextBlock { Text = "Gesture pattern", Opacity = 0.68, Margin = new Thickness(0, 12, 0, 6) });
         panel.Children.Add(drawPanel);
         panel.Children.Add(NewTwoColumnRow(clearGestureButton, trainByTouchpad));
         panel.Children.Add(trainingStatus);
@@ -2702,7 +2702,7 @@ public sealed partial class MainWindow : Window
         // panel.Children.Add(continuousGestureJson);
         var scrollOffsetsBeforeDialog = CaptureActionsPageScrollOffsets(PageHost);
         var mainScrollOffsetBeforeDialog = MainContentScrollViewer.VerticalOffset;
-        if (!await ConfirmDialogAsync($"编辑动作 {DisplayName(action.Name)}", panel, "保存"))
+        if (!await ConfirmDialogAsync($"Edit action {DisplayName(action.Name)}", panel, "Save"))
             return;
 
         var validDrawnPointPatterns = drawnPointPatterns
@@ -2723,7 +2723,7 @@ public sealed partial class MainWindow : Window
                     : null;
                 if (currentAction is null)
                 {
-                    await ShowInfoDialog("动作已变化", "保存手势图案后动作列表已刷新，但没有找到正在编辑的动作。请重新打开这个动作再保存。");
+                    await ShowInfoDialog("Action changed", "The action list refreshed after saving the gesture pattern, but the action being edited wasn't found. Please reopen the action and save again.");
                     ReloadActionDataOnly(scrollOffsetsBeforeDialog, mainScrollOffsetBeforeDialog);
                     return;
                 }
@@ -2741,31 +2741,31 @@ public sealed partial class MainWindow : Window
     private FrameworkElement NewBuiltInGesturePicker(TextBox gesture)
     {
         var combo = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = BuiltInGestureIndex(ResolveGestureName(gesture, gesture.Text)) };
-        combo.Items.Add("选择内置触发方式");
-        combo.Items.Add("触控板上边缘点击");
-        combo.Items.Add("触控板下边缘点击");
-        combo.Items.Add("触控板左边缘点击");
-        combo.Items.Add("触控板右边缘点击");
-        combo.Items.Add("触控板上边缘左滑");
-        combo.Items.Add("触控板上边缘右滑");
-        combo.Items.Add("触控板下边缘左滑");
-        combo.Items.Add("触控板下边缘右滑");
-        combo.Items.Add("触控板左边缘上滑");
-        combo.Items.Add("触控板左边缘下滑");
-        combo.Items.Add("触控板右边缘上滑");
-        combo.Items.Add("触控板右边缘下滑");
-        combo.Items.Add("触控屏上边缘点击");
-        combo.Items.Add("触控屏下边缘点击");
-        combo.Items.Add("触控屏左边缘点击");
-        combo.Items.Add("触控屏右边缘点击");
-        combo.Items.Add("触控屏上边缘左滑");
-        combo.Items.Add("触控屏上边缘右滑");
-        combo.Items.Add("触控屏下边缘左滑");
-        combo.Items.Add("触控屏下边缘右滑");
-        combo.Items.Add("触控屏左边缘上滑");
-        combo.Items.Add("触控屏左边缘下滑");
-        combo.Items.Add("触控屏右边缘上滑");
-        combo.Items.Add("触控屏右边缘下滑");
+        combo.Items.Add("Select a built-in trigger");
+        combo.Items.Add("Touchpad top edge tap");
+        combo.Items.Add("Touchpad bottom edge tap");
+        combo.Items.Add("Touchpad left edge tap");
+        combo.Items.Add("Touchpad right edge tap");
+        combo.Items.Add("Touchpad top edge swipe left");
+        combo.Items.Add("Touchpad top edge swipe right");
+        combo.Items.Add("Touchpad bottom edge swipe left");
+        combo.Items.Add("Touchpad bottom edge swipe right");
+        combo.Items.Add("Touchpad left edge swipe up");
+        combo.Items.Add("Touchpad left edge swipe down");
+        combo.Items.Add("Touchpad right edge swipe up");
+        combo.Items.Add("Touchpad right edge swipe down");
+        combo.Items.Add("Touchscreen top edge tap");
+        combo.Items.Add("Touchscreen bottom edge tap");
+        combo.Items.Add("Touchscreen left edge tap");
+        combo.Items.Add("Touchscreen right edge tap");
+        combo.Items.Add("Touchscreen top edge swipe left");
+        combo.Items.Add("Touchscreen top edge swipe right");
+        combo.Items.Add("Touchscreen bottom edge swipe left");
+        combo.Items.Add("Touchscreen bottom edge swipe right");
+        combo.Items.Add("Touchscreen left edge swipe up");
+        combo.Items.Add("Touchscreen left edge swipe down");
+        combo.Items.Add("Touchscreen right edge swipe up");
+        combo.Items.Add("Touchscreen right edge swipe down");
         combo.Items.Clear();
         for (var index = 0; index <= 24; index++)
             combo.Items.Add(BuiltInGestureDisplayNameFromIndex(index));
@@ -2906,7 +2906,7 @@ public sealed partial class MainWindow : Window
 
     private async Task DeleteActionAsync(LegacyApplication app, LegacyAction action)
     {
-        if (!await ConfirmDialogAsync("删除确认", $"确定删除动作 {action.Name}？", "删除"))
+        if (!await ConfirmDialogAsync("Confirm delete", $"Delete action {action.Name}?", "Delete"))
             return;
         _legacyData.DeleteAction(app, action);
         ReloadData();
@@ -2914,11 +2914,11 @@ public sealed partial class MainWindow : Window
 
     private async Task AddCommandAsync(LegacyAction action)
     {
-        var name = new TextBox { PlaceholderText = "命令名称", Text = "发送快捷键" };
+        var name = new TextBox { PlaceholderText = "Command name", Text = "Send shortcut" };
         var plugin = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 0 };
         AddPluginItems(plugin);
-        var pluginClass = new TextBox { PlaceholderText = "自定义插件类名", Text = PluginClassFromIndex(0), Margin = new Thickness(0, 8, 0, 0) };
-        var settings = new TextBox { PlaceholderText = "命令设置 JSON，可留空", Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var pluginClass = new TextBox { PlaceholderText = "Custom plugin class name", Text = PluginClassFromIndex(0), Margin = new Thickness(0, 8, 0, 0) };
+        var settings = new TextBox { PlaceholderText = "Command settings JSON (optional)", Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
         var hotkey = NewHotKeyRecorder(settings, "");
         var appPicker = NewCommandAppPicker(plugin, pluginClass, settings);
         var typedSettings = NewTypedCommandSettingsEditor(pluginClass, settings);
@@ -2948,7 +2948,7 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(typedSettings);
         panel.Children.Add(settings);
         UpdateEditor();
-        if (!await ConfirmDialogAsync($"给 {action.Name} 添加命令", panel, "添加"))
+        if (!await ConfirmDialogAsync($"Add command to {action.Name}", panel, "Add"))
             return;
 
         _legacyData.AddCommand(action, name.Text, pluginClass.Text, settings.Text);
@@ -2967,11 +2967,11 @@ public sealed partial class MainWindow : Window
 
     private async Task EditCommandAsync(LegacyCommand command)
     {
-        var name = new TextBox { PlaceholderText = "命令名称", Text = command.Name };
+        var name = new TextBox { PlaceholderText = "Command name", Text = command.Name };
         var plugin = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = PluginIndex(command.PluginClass) };
         AddPluginItems(plugin);
-        var pluginClass = new TextBox { PlaceholderText = "自定义插件类名", Text = command.PluginClass, Margin = new Thickness(0, 8, 0, 0) };
-        var settings = new TextBox { PlaceholderText = "命令设置 JSON，可留空", Text = command.Settings, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var pluginClass = new TextBox { PlaceholderText = "Custom plugin class name", Text = command.PluginClass, Margin = new Thickness(0, 8, 0, 0) };
+        var settings = new TextBox { PlaceholderText = "Command settings JSON (optional)", Text = command.Settings, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
         var hotkey = NewHotKeyRecorder(settings, command.Settings);
         var appPicker = NewCommandAppPicker(plugin, pluginClass, settings);
         var typedSettings = NewTypedCommandSettingsEditor(pluginClass, settings);
@@ -2984,7 +2984,7 @@ public sealed partial class MainWindow : Window
             UpdateCommandEditorVisibility(pluginClass.Text, pluginClass, hotkey, settings, appPicker);
             UpdateTypedCommandSettingsEditor(typedSettings, pluginClass.Text, settings.Text);
         };
-        var enabled = new CheckBox { Content = "启用", IsChecked = command.IsEnabled, Margin = new Thickness(0, 8, 0, 0) };
+        var enabled = new CheckBox { Content = "Enable", IsChecked = command.IsEnabled, Margin = new Thickness(0, 8, 0, 0) };
         var panel = NewCardPanel(0);
         panel.Children.Add(name);
         panel.Children.Add(plugin);
@@ -2996,7 +2996,7 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(enabled);
         UpdateCommandEditorVisibility(command.PluginClass, pluginClass, hotkey, settings, appPicker);
         UpdateTypedCommandSettingsEditor(typedSettings, command.PluginClass, settings.Text);
-        if (!await ConfirmDialogAsync($"编辑命令 {command.Name}", panel, "保存"))
+        if (!await ConfirmDialogAsync($"Edit command {command.Name}", panel, "Save"))
             return;
 
         _legacyData.UpdateCommand(command, name.Text, pluginClass.Text, settings.Text, enabled.IsChecked ?? true);
@@ -3006,7 +3006,7 @@ public sealed partial class MainWindow : Window
 
     private async Task DeleteCommandAsync(LegacyAction action, LegacyCommand command)
     {
-        if (!await ConfirmDialogAsync("删除确认", $"确定删除命令 {command.Name}？", "删除"))
+        if (!await ConfirmDialogAsync("Confirm delete", $"Delete command {command.Name}?", "Delete"))
             return;
         _legacyData.DeleteCommand(action, command);
         _ = NotifyDaemonAsync(DaemonCommand.LoadApplications);
@@ -3033,7 +3033,7 @@ public sealed partial class MainWindow : Window
         recorder.Margin = new Thickness(0);
         recorder.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-        var clear = NewPillButton("清除", false);
+        var clear = NewPillButton("Clear", false);
         clear.Click += (_, _) =>
         {
             if (ReferenceEquals(_activeHotKeyRecorder, recorder))
@@ -3092,7 +3092,7 @@ public sealed partial class MainWindow : Window
     {
         var combo = new ComboBox
         {
-            PlaceholderText = "选择已安装应用",
+            PlaceholderText = "Select an installed app",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
@@ -3120,7 +3120,7 @@ public sealed partial class MainWindow : Window
             ApplyAppCommandChoice(choice, plugin, pluginClass, settings);
         };
 
-        var browse = NewPillButton("浏览 EXE", false);
+        var browse = NewPillButton("Browse EXE", false);
         browse.Click += async (_, _) =>
         {
             var path = await PickOpenFileAsync(new[] { ".exe" });
@@ -3241,30 +3241,30 @@ public sealed partial class MainWindow : Window
             Margin = new Thickness(0, 8, 0, 0)
         };
 
-        var volumeMethod = NewInlineComboBox(["增大音量", "减小音量", "静音"], 0);
+        var volumeMethod = NewInlineComboBox(["Volume up", "Volume down", "Mute"], 0);
         var volumePercent = new TextBox
         {
-            Header = "变化量",
-            PlaceholderText = "百分比",
+            Header = "Change amount",
+            PlaceholderText = "Percent",
             Text = "10"
         };
         var volumePanel = NewCommandSettingsPanel(volumeMethod, volumePercent);
 
-        var brightnessMethod = NewInlineComboBox(["增大亮度", "减小亮度"], 0);
+        var brightnessMethod = NewInlineComboBox(["Brightness up", "Brightness down"], 0);
         var brightnessPercent = new TextBox
         {
-            Header = "变化量",
-            PlaceholderText = "百分比",
+            Header = "Change amount",
+            PlaceholderText = "Percent",
             Text = "10"
         };
         var brightnessPanel = NewCommandSettingsPanel(brightnessMethod, brightnessPercent);
 
         var openFilePath = new TextBox
         {
-            PlaceholderText = "选择要打开的文件",
+            PlaceholderText = "Select a file to open",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        var browseOpenFile = NewPillButton("浏览", false);
+        var browseOpenFile = NewPillButton("Browse", false);
         browseOpenFile.Click += async (_, _) =>
         {
             var path = await PickOpenFileAsync(["*"]);
@@ -3284,7 +3284,7 @@ public sealed partial class MainWindow : Window
 
         var openFileVariables = new TextBox
         {
-            PlaceholderText = "启动参数，可留空"
+            PlaceholderText = "Launch arguments (optional)"
         };
         var openFilePanel = new StackPanel { Spacing = 8 };
         openFilePanel.Children.Add(openFileGrid);
@@ -3292,14 +3292,14 @@ public sealed partial class MainWindow : Window
 
         var runCommandText = new TextBox
         {
-            PlaceholderText = "输入要执行的命令；多行命令会按顺序执行",
+            PlaceholderText = "Enter the command(s) to run; multiple lines run in order",
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 140
         };
         var runCommandShell = NewInlineComboBox(["CMD", "PowerShell"], 0);
-        var runCommandAdministrator = new CheckBox { Content = "管理员权限" };
-        var runCommandShowWindow = new CheckBox { Content = "显示窗口" };
+        var runCommandAdministrator = new CheckBox { Content = "Administrator privileges" };
+        var runCommandShowWindow = new CheckBox { Content = "Show window" };
         var runCommandOptions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -3546,8 +3546,8 @@ public sealed partial class MainWindow : Window
     private static IReadOnlyList<AppCommandChoice> GetInstalledApplicationChoices()
     {
         var choices = new Dictionary<string, AppCommandChoice>(StringComparer.OrdinalIgnoreCase);
-        AddDesktopChoice(choices, "记事本", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "notepad.exe"));
-        AddDesktopChoice(choices, "资源管理器", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"));
+        AddDesktopChoice(choices, "Notepad", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "notepad.exe"));
+        AddDesktopChoice(choices, "File Explorer", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"));
 
         foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
         {
@@ -3808,7 +3808,7 @@ public sealed partial class MainWindow : Window
         _activeHotKeyUsesArrayKeyCode = usesArrayKeyCode;
         _hotKeyRecordingPressedKeys.Clear();
         _stopHotKeyRecordingWhenReleased = false;
-        recorder.Text = "请按下快捷键...";
+        recorder.Text = "Press a shortcut...";
         if (_keyboardHook != IntPtr.Zero)
             return;
 
@@ -3833,7 +3833,7 @@ public sealed partial class MainWindow : Window
         _keyboardHook = IntPtr.Zero;
         _keyboardHookProc = null;
 
-        if (recorder is not null && settings is not null && string.Equals(recorder.Text, "请按下快捷键...", StringComparison.Ordinal))
+        if (recorder is not null && settings is not null && string.Equals(recorder.Text, "Press a shortcut...", StringComparison.Ordinal))
             recorder.Text = HotKeyDisplayText(settings.Text);
     }
 
@@ -3861,7 +3861,7 @@ public sealed partial class MainWindow : Window
                         HasPressedModifier(0x11, 0xA2, 0xA3),
                         HasPressedModifier(0x10, 0xA0, 0xA1),
                         HasPressedModifier(0x12, 0xA4, 0xA5));
-                    _ = DispatcherQueue.TryEnqueue(() => _activeHotKeyRecorder.Text = string.IsNullOrWhiteSpace(preview) ? "请按下快捷键..." : $"{preview} + ...");
+                    _ = DispatcherQueue.TryEnqueue(() => _activeHotKeyRecorder.Text = string.IsNullOrWhiteSpace(preview) ? "Press a shortcut..." : $"{preview} + ...");
                     return new IntPtr(1);
                 }
 
@@ -3984,7 +3984,7 @@ public sealed partial class MainWindow : Window
         else
             _legacyData.ImportActions(file);
         ReloadData();
-        await ShowInfoDialog("导入完成", file);
+        await ShowInfoDialog("Import complete", file);
     }
 
     private async Task ExportActionsAsync()
@@ -3992,7 +3992,7 @@ public sealed partial class MainWindow : Window
         var file = await PickSaveFileAsync("Actions.gsa", ".gsa");
         if (file is null)
             return;
-        await ShowInfoDialog("导出完成", _legacyData.ExportActions(file));
+        await ShowInfoDialog("Export complete", _legacyData.ExportActions(file));
     }
 
     private async Task ImportGesturesAsync()
@@ -4002,7 +4002,7 @@ public sealed partial class MainWindow : Window
             return;
         _legacyData.ImportGestures(file);
         ReloadData();
-        await ShowInfoDialog("导入完成", file);
+        await ShowInfoDialog("Import complete", file);
     }
 
     private async Task ExportGesturesAsync()
@@ -4010,12 +4010,12 @@ public sealed partial class MainWindow : Window
         var file = await PickSaveFileAsync("Gestures.gest", ".gest");
         if (file is null)
             return;
-        await ShowInfoDialog("导出完成", _legacyData.ExportGestures(file));
+        await ShowInfoDialog("Export complete", _legacyData.ExportGestures(file));
     }
 
     private async Task AddGestureAsync()
     {
-        var name = new TextBox { PlaceholderText = "手势名称", Text = "NewGesture" };
+        var name = new TextBox { PlaceholderText = "Gesture name", Text = "NewGesture" };
         var fingerCount = new ComboBox { Margin = new Thickness(0, 8, 0, 0), SelectedIndex = 2 };
         foreach (var item in new[] { "1 指", "2 指", "3 指", "4 指", "5 指" })
             fingerCount.Items.Add(item);
@@ -4027,8 +4027,8 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(name);
         panel.Children.Add(fingerCount);
         panel.Children.Add(direction);
-        panel.Children.Add(new TextBlock { Text = "这里会生成旧版配置可识别的基础轨迹模板，采样训练编辑器会继续迁移。", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
-        if (!await ConfirmDialogAsync("新建手势", panel, "添加"))
+        panel.Children.Add(new TextBlock { Text = "This generates a basic path template recognized by the legacy config; the sampling training editor will continue the migration.", Opacity = 0.68, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+        if (!await ConfirmDialogAsync("New gesture", panel, "Add"))
             return;
 
         _legacyData.AddGesture(name.Text, fingerCount.SelectedIndex + 1, direction.SelectedItem?.ToString() ?? "向右");
@@ -4037,8 +4037,8 @@ public sealed partial class MainWindow : Window
 
     private async Task RenameGestureAsync(LegacyGesture gesture)
     {
-        var name = new TextBox { PlaceholderText = "手势名称", Text = gesture.Name };
-        if (!await ConfirmDialogAsync("重命名手势", name, "保存"))
+        var name = new TextBox { PlaceholderText = "Gesture name", Text = gesture.Name };
+        if (!await ConfirmDialogAsync("Rename gesture", name, "Save"))
             return;
         _legacyData.RenameGesture(gesture, name.Text);
         ReloadData();
@@ -4046,7 +4046,7 @@ public sealed partial class MainWindow : Window
 
     private async Task DeleteGestureAsync(LegacyGesture gesture)
     {
-        if (!await ConfirmDialogAsync("删除确认", $"确定删除手势 {gesture.Name}？引用它的动作会保留，但后台将无法匹配这个手势。", "删除"))
+        if (!await ConfirmDialogAsync("Confirm delete", $"Delete gesture {gesture.Name}? Actions that reference it are kept, but the daemon won't be able to match this gesture.", "Delete"))
             return;
         _legacyData.DeleteGesture(gesture);
         ReloadData();
@@ -4054,11 +4054,11 @@ public sealed partial class MainWindow : Window
 
     private async Task StartDaemonGestureTrainingAsync()
     {
-        var name = new TextBox { PlaceholderText = "手势名称", Text = "NewGesture" };
+        var name = new TextBox { PlaceholderText = "Gesture name", Text = "NewGesture" };
         var panel = NewCardPanel(8);
         panel.Children.Add(name);
-        panel.Children.Add(new TextBlock { Text = "点击开始后，请用触控板/触摸屏绘制真实多指手势。后台捕获完成后会自动保存。", TextWrapping = TextWrapping.Wrap, Opacity = 0.68 });
-        if (!await ConfirmDialogAsync("后台训练手势", panel, "开始"))
+        panel.Children.Add(new TextBlock { Text = "After clicking Start, draw a real multi-finger gesture with the touchpad/touchscreen. It saves automatically once the daemon finishes capturing.", TextWrapping = TextWrapping.Wrap, Opacity = 0.68 });
+        if (!await ConfirmDialogAsync("Train gesture in background", panel, "Start"))
             return;
 
         _pendingTrainingGestureName = name.Text;
@@ -4066,7 +4066,7 @@ public sealed partial class MainWindow : Window
         if (!await NotifyDaemonAsync(DaemonCommand.StartTeaching))
         {
             _trainingPipeServer.Stop();
-            await ShowInfoDialog("后台未运行", "没有连接到后台托盘，已切换为手绘训练。");
+            await ShowInfoDialog("Daemon not running", "Not connected to the background tray; switched to freehand training.");
             await DrawGestureAsync(null);
         }
     }
@@ -4083,7 +4083,7 @@ public sealed partial class MainWindow : Window
 
         if (_pendingTrainingStatus is not null)
         {
-            _pendingTrainingStatus.Text = $"已录制手势 {name}，点击保存后生效。";
+            _pendingTrainingStatus.Text = $"Recorded gesture {name}; click Save to apply.";
             _pendingTrainingPreview?.Invoke(pointPatterns);
             _pendingTrainingGestureName = null;
             _pendingTrainingStatus = null;
@@ -4098,7 +4098,7 @@ public sealed partial class MainWindow : Window
         _pendingTrainingGestureName = null;
         _pendingTrainingPreview = null;
         ReloadData();
-        await ShowInfoDialog("训练完成", $"已保存手势 {name}。");
+        await ShowInfoDialog("Training complete", $"Saved gesture {name}.");
     }
 
     private async Task StartGestureTrainingForNameAsync(string gestureName, TextBlock status, Action<IReadOnlyList<IReadOnlyList<(double X, double Y)>>>? preview = null)
@@ -4107,7 +4107,7 @@ public sealed partial class MainWindow : Window
         _pendingTrainingStatus = status;
         _pendingTrainingPreview = preview;
         _trainingPipeServer.Start();
-        status.Text = "请现在用触控板绘制手势，完成后会自动保存到当前手势图案。";
+        status.Text = "Draw the gesture with the touchpad now; it will be saved to the current gesture pattern automatically when done.";
         if (await NotifyDaemonAsync(DaemonCommand.StartTeaching))
             return;
 
@@ -4115,12 +4115,12 @@ public sealed partial class MainWindow : Window
         _pendingTrainingGestureName = null;
         _pendingTrainingStatus = null;
         _pendingTrainingPreview = null;
-        status.Text = "后台识别服务未连接，无法捕捉触控板原始轨迹。可以先确认托盘服务已启动。";
+        status.Text = "The background recognition service isn't connected and can't capture raw touchpad paths. Make sure the tray service is running.";
     }
 
     private async Task DrawGestureAsync(LegacyGesture? gesture)
     {
-        var name = new TextBox { PlaceholderText = "手势名称", Text = gesture?.Name ?? "NewGesture" };
+        var name = new TextBox { PlaceholderText = "Gesture name", Text = gesture?.Name ?? "NewGesture" };
         var fingerCount = new ComboBox { Margin = new Thickness(0, 8, 0, 8), SelectedIndex = Math.Clamp((gesture?.FingerCount ?? 3) - 1, 0, 4) };
         foreach (var item in new[] { "1 指", "2 指", "3 指", "4 指", "5 指" })
             fingerCount.Items.Add(item);
@@ -4134,7 +4134,7 @@ public sealed partial class MainWindow : Window
         };
         var hint = new TextBlock
         {
-            Text = "在这里按住并绘制手势轨迹",
+            Text = "Press and draw the gesture path here",
             Opacity = 0.62,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
@@ -4192,7 +4192,7 @@ public sealed partial class MainWindow : Window
             args.Handled = true;
         };
 
-        var clear = NewPillButton("清除轨迹", false);
+        var clear = NewPillButton("Clear path", false);
         clear.Click += (_, _) =>
         {
             sample.Clear();
@@ -4211,12 +4211,12 @@ public sealed partial class MainWindow : Window
             Child = canvas
         });
         panel.Children.Add(clear);
-        if (!await ConfirmDialogAsync(gesture is null ? "绘制手势" : $"重训 {gesture.Name}", panel, "保存"))
+        if (!await ConfirmDialogAsync(gesture is null ? "Draw gesture" : $"Retrain {gesture.Name}", panel, "Save"))
             return;
 
         if (sample.Count < 2)
         {
-            await ShowInfoDialog("轨迹太短", "请至少绘制一段明显轨迹。");
+            await ShowInfoDialog("Path too short", "Please draw at least one clear stroke.");
             return;
         }
 
@@ -4243,7 +4243,7 @@ public sealed partial class MainWindow : Window
         };
         var hint = new TextBlock
         {
-            Text = "在这里用触控板、鼠标或触摸屏按住并绘制图案",
+            Text = "Press and draw a pattern here with the touchpad, mouse, or touchscreen",
             Opacity = 0.62,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -4330,7 +4330,7 @@ public sealed partial class MainWindow : Window
             args.Handled = true;
         };
 
-        clearButton = NewPillButton("清除图案", false);
+        clearButton = NewPillButton("Clear pattern", false);
         clearButton.Click += (_, _) =>
         {
             sample.Clear();
@@ -4359,7 +4359,7 @@ public sealed partial class MainWindow : Window
             return;
         _legacyData.RestoreArchive(file);
         ReloadData();
-        await ShowInfoDialog("恢复完成", "配置已恢复，后台服务会在重载后使用新配置。");
+        await ShowInfoDialog("Restore complete", "Configuration restored; the background service will use the new config after reloading.");
     }
 
     private async Task TestKandoMenuAsync()
@@ -4369,11 +4369,11 @@ public sealed partial class MainWindow : Window
 
         if (!StartKando(_legacyData.Options, BuildKandoShowMenuArguments(_legacyData.Options)))
         {
-            await ShowInfoDialog("Kando 未启动", "没有找到 Kando 可执行文件，或启动失败。请检查 Kando 程序路径。");
+            await ShowInfoDialog("Kando not started", "Kando executable not found, or it failed to start. Please check the Kando program path.");
             return;
         }
 
-        await ShowInfoDialog("已发送唤起命令", "如果 Kando 已正确配置，圆环菜单会出现在当前鼠标位置。");
+        await ShowInfoDialog("Activation command sent", "If Kando is configured correctly, the radial menu will appear at the current mouse position.");
     }
 
     private async Task EnableKandoQuickActionsAsync()
@@ -4387,7 +4387,7 @@ public sealed partial class MainWindow : Window
         await UpdateOptionAndWaitAsync("KandoEnabled", "False");
         _legacyData = LegacyDataStore.Load();
         ShowPage("quickActions");
-        await ShowInfoDialog("Kando 未启动", "没有找到 Kando 可执行文件，或启动失败。请检查 Kando 程序路径。");
+        await ShowInfoDialog("Kando not started", "Kando executable not found, or it failed to start. Please check the Kando program path.");
     }
 
     private async Task DisableKandoQuickActionsAsync()
@@ -4420,7 +4420,7 @@ public sealed partial class MainWindow : Window
         _legacyData = LegacyDataStore.Load();
 
         if (!StartKando(_legacyData.Options, "--settings"))
-            await ShowInfoDialog("Kando 未启动", "没有找到 Kando 可执行文件，或启动失败。请检查 Kando 程序路径。");
+            await ShowInfoDialog("Kando not started", "Kando executable not found, or it failed to start. Please check the Kando program path.");
     }
 
     private static string BuildKandoShowMenuArguments(LegacyOptions options)
@@ -4616,7 +4616,7 @@ public sealed partial class MainWindow : Window
                     name = JsonString(rootElement, "name");
 
                 if (string.IsNullOrWhiteSpace(name))
-                    name = "未命名菜单";
+                    name = "Unnamed menu";
 
                 menus.Add(new KandoMenuInfo(name, shortcut));
             }
@@ -4683,7 +4683,7 @@ public sealed partial class MainWindow : Window
     }
 
     private static string DisplayFallback(string value)
-        => string.IsNullOrWhiteSpace(value) ? "未设置" : value;
+        => string.IsNullOrWhiteSpace(value) ? "Not set" : value;
 
     private static bool TryCreateHotKeySettingsFromKandoShortcut(string shortcut, out string settings)
     {
@@ -4804,7 +4804,7 @@ public sealed partial class MainWindow : Window
         {
             get
             {
-                var shortcut = string.IsNullOrWhiteSpace(Shortcut) ? "未绑定快捷键" : Shortcut;
+                var shortcut = string.IsNullOrWhiteSpace(Shortcut) ? "No shortcut bound" : Shortcut;
                 return $"{Name}    {shortcut}";
             }
         }
@@ -4840,7 +4840,7 @@ public sealed partial class MainWindow : Window
         }
         if (data is null)
         {
-            await ShowInfoDialog("下载失败", lastError?.Message ?? "没有可用的共享列表源。");
+            await ShowInfoDialog("Download failed", lastError?.Message ?? "No shared list source is available.");
             return;
         }
 
@@ -4855,7 +4855,7 @@ public sealed partial class MainWindow : Window
             _legacyData.ImportGestures(file);
         Directory.Delete(tempRoot, true);
         ReloadData();
-        await ShowInfoDialog("导入完成", $"已导入 {actionFiles.Length} 个动作文件、{gestureFiles.Length} 个手势文件。");
+        await ShowInfoDialog("Import complete", $"Imported {actionFiles.Length} action file(s) and {gestureFiles.Length} gesture file(s).");
     }
 
     private async Task ShowLogAsync()
@@ -5006,7 +5006,7 @@ public sealed partial class MainWindow : Window
 
         var titleBlock = new TextBlock
         {
-            Text = "GestureSign 日志",
+            Text = "GestureSign log",
             FontSize = 24,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(36, 28, 36, 18)
@@ -5014,7 +5014,7 @@ public sealed partial class MainWindow : Window
 
         var closeButton = new Button
         {
-            Content = "关闭",
+            Content = "Close",
             Height = 44,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
@@ -5106,7 +5106,7 @@ public sealed partial class MainWindow : Window
 
     private static async Task<string> BuildLogDisplayTextAsync(string logPath)
     {
-        var text = File.Exists(logPath) ? await ReadTextFileSharedWithRetryAsync(logPath) : "暂无日志文件。";
+        var text = File.Exists(logPath) ? await ReadTextFileSharedWithRetryAsync(logPath) : "No log file yet.";
         return TailLogText(text);
     }
 
@@ -5117,7 +5117,7 @@ public sealed partial class MainWindow : Window
         var result = new StringBuilder();
         var gestureSummary = RecentGestureLogSummary(fullText);
         result.AppendLine(string.IsNullOrWhiteSpace(gestureSummary)
-            ? "还没有记录到新的手势捕捉、识别或执行。"
+            ? "No new gesture capture, recognition, or execution recorded yet."
             : gestureSummary);
         text = result.ToString();
 
@@ -5129,7 +5129,7 @@ public sealed partial class MainWindow : Window
         if (firstLineBreak >= 0 && firstLineBreak + 1 < text.Length)
             start = firstLineBreak + 1;
 
-        return "仅显示最近日志。完整日志仍保存在本机文件中。\r\n\r\n" + text.Substring(start);
+        return "Showing recent logs only. The full log is still saved in a local file.\r\n\r\n" + text.Substring(start);
     }
 
     private static string CompactRawLogTail(string text, int lineCount)
@@ -5141,7 +5141,7 @@ public sealed partial class MainWindow : Window
             .Select(FormatRawLogLine)
             .ToArray();
 
-        return lines.Length == 0 ? "暂无原始日志。" : string.Join("\r\n", lines);
+        return lines.Length == 0 ? "No raw logs yet." : string.Join("\r\n", lines);
     }
 
     private static string FormatRawLogLine(string line)
@@ -5299,30 +5299,30 @@ public sealed partial class MainWindow : Window
     private static string TranslateDevice(string value)
         => value switch
         {
-            "Mouse" => "鼠标",
-            "TouchPad" => "触控板",
-            "TouchScreen" => "触摸屏",
-            "Pen" => "手写笔",
+            "Mouse" => "Mouse",
+            "TouchPad" => "Touchpad",
+            "TouchScreen" => "Touchscreen",
+            "Pen" => "Pen",
             _ => value
         };
 
     private static string TranslateMouseButton(string value)
         => value switch
         {
-            "Right" => "右键",
-            "Middle" => "中键",
-            "Left" => "左键",
-            "XButton1" => "侧键1",
-            "XButton2" => "侧键2",
+            "Right" => "Right button",
+            "Middle" => "Middle button",
+            "Left" => "Left button",
+            "XButton1" => "Side button 1",
+            "XButton2" => "Side button 2",
             _ => value
         };
 
     private static string TranslateMode(string value)
         => value switch
         {
-            "Normal" => "正常",
-            "Training" => "训练",
-            "UserDisabled" => "暂停",
+            "Normal" => "Normal",
+            "Training" => "Training",
+            "UserDisabled" => "Paused",
             _ => value
         };
 
@@ -5361,9 +5361,9 @@ public sealed partial class MainWindow : Window
     private async Task SendFeedbackAsync()
     {
         var logPath = Path.Combine(_legacyData.LocalPath, "GestureSign.log");
-        var body = File.Exists(logPath) ? Uri.EscapeDataString($"请描述问题:%0D%0A%0D%0A日志路径: {logPath}") : Uri.EscapeDataString("请描述问题:");
+        var body = File.Exists(logPath) ? Uri.EscapeDataString($"Please describe the issue:%0D%0A%0D%0ALog path: {logPath}") : Uri.EscapeDataString("Please describe the issue:");
         Process.Start(new ProcessStartInfo($"mailto:553078206@qq.com?subject=GestureSign%20Feedback&body={body}") { UseShellExecute = true });
-        await ShowInfoDialog("反馈", "已打开默认邮件客户端；日志路径也已写入邮件正文。");
+        await ShowInfoDialog("Feedback", "Opened the default email client; the log path has also been written into the email body.");
     }
 
     private async Task<string?> PickOpenFileAsync(string[] extensions)
@@ -5380,7 +5380,7 @@ public sealed partial class MainWindow : Window
     {
         var picker = new FileSavePicker { SuggestedFileName = suggestedName };
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-        picker.FileTypeChoices.Add("GestureSign 配置", [extension]);
+        picker.FileTypeChoices.Add("GestureSign configuration", [extension]);
         var file = await picker.PickSaveFileAsync();
         return file?.Path;
     }
@@ -5393,7 +5393,7 @@ public sealed partial class MainWindow : Window
             Title = title,
             Content = NewDialogScrollContent(content),
             PrimaryButtonText = primaryText,
-            CloseButtonText = "取消",
+            CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
@@ -5443,7 +5443,7 @@ public sealed partial class MainWindow : Window
             XamlRoot = Root.XamlRoot,
             Title = title,
             Content = message,
-            CloseButtonText = "确定"
+            CloseButtonText = "OK"
         };
         await dialog.ShowAsync();
     }
@@ -5989,9 +5989,9 @@ public sealed partial class MainWindow : Window
     private FrameworkElement NewDialogMapCard()
     {
         var content = NewCardPanel(10);
-        content.Children.Add(new TextBlock { Text = "编辑入口", Style = BodyStrongTextBlockStyle });
-        content.Children.Add(new TextBlock { Text = "旧版对话框已整理为 WinUI 重构目标：程序匹配、动作设置、命令选择、触发条件、导入导出。", Opacity = 0.68, TextWrapping = TextWrapping.Wrap });
-        content.Children.Add(NewSmallCommandBar(["程序设置", "动作设置", "命令设置", "触发条件", "导入/导出"]));
+        content.Children.Add(new TextBlock { Text = "Edit entry", Style = BodyStrongTextBlockStyle });
+        content.Children.Add(new TextBlock { Text = "The legacy dialogs have been organized into WinUI refactor targets: application matching, action settings, command selection, trigger conditions, and import/export.", Opacity = 0.68, TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(NewSmallCommandBar(["App Settings", "Action Settings", "Command Settings", "Trigger Conditions", "Import/Export"]));
         return NewCard(content);
     }
 
@@ -6160,7 +6160,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             LogException(ex);
-            await ShowInfoDialog("选项保存失败", ex.Message);
+            await ShowInfoDialog("Failed to save options", ex.Message);
         }
         finally
         {
@@ -6684,7 +6684,7 @@ public sealed partial class MainWindow : Window
 
         return value.Trim().ToLowerInvariant() switch
         {
-            "(全局动作)" or "全局动作" => L("(全局动作)", "(Global Actions)", "(全域動作)", "(グローバルアクション)", "(전역 동작)"),
+            "(Global Actions)" or "全局动作" => L("(全局动作)", "(Global Actions)", "(全域動作)", "(グローバルアクション)", "(전역 동작)"),
             "windows 资源管理器" or "windows explorer" => L("Windows 资源管理器", "Windows Explorer", "Windows 檔案總管", "Windows エクスプローラー", "Windows 탐색기"),
             "浏览器" => L("浏览器", "Browser", "瀏覽器", "ブラウザー", "브라우저"),
             "uwp 应用" or "uwp app" or "uwp application" => L("UWP 应用", "UWP App", "UWP 應用程式", "UWP アプリ", "UWP 앱"),
@@ -6700,7 +6700,7 @@ public sealed partial class MainWindow : Window
         var trimmed = value.Trim();
         return trimmed.ToLowerInvariant() switch
         {
-            "save" or "保存" => L("保存", "Save", "儲存", "保存", "저장"),
+            "save" or "Save" => L("保存", "Save", "儲存", "保存", "저장"),
             "copy" or "复制" => L("复制", "Copy", "複製", "コピー", "복사"),
             "cut" or "剪切" => L("剪切", "Cut", "剪下", "切り取り", "잘라내기"),
             "paste" or "粘贴" => L("粘贴", "Paste", "貼上", "貼り付け", "붙여넣기"),
@@ -6747,7 +6747,7 @@ public sealed partial class MainWindow : Window
             "toggle window topmost" or "窗口置顶" => L("窗口置顶", "Toggle Topmost", "視窗置頂", "最前面表示切替", "항상 위 전환"),
             "temporarily disable" or "临时禁用手势" => L("临时禁用手势", "Temporarily Disable Gestures", "暫時停用手勢", "ジェスチャを一時無効化", "제스처 임시 비활성화"),
             "toggle disable gestures" or "切换禁用手势" => L("切换禁用手势", "Toggle Gesture Disable", "切換停用手勢", "ジェスチャ無効化切替", "제스처 비활성화 전환"),
-            "发送快捷键" => L("发送快捷键", "Send Hotkey", "傳送快速鍵", "ショートカット送信", "단축키 보내기"),
+            "Send shortcut" => L("发送快捷键", "Send Hotkey", "傳送快速鍵", "ショートカット送信", "단축키 보내기"),
             "显示/隐藏触摸键盘" => L("显示/隐藏触摸键盘", "Show/Hide Touch Keyboard", "顯示/隱藏觸控鍵盤", "タッチキーボード表示/非表示", "터치 키보드 표시/숨기기"),
             "s形手势" => L("S形手势", "S-shaped Gesture", "S 形手勢", "S 字ジェスチャ", "S자 제스처"),
             "双指左滑" => L("双指左滑", "Two-finger Swipe Left", "雙指左滑", "2 本指左スワイプ", "두 손가락 왼쪽 스와이프"),
@@ -7169,10 +7169,10 @@ public sealed partial class MainWindow : Window
 
         var daemonPath = FindDaemonPath();
         if (!File.Exists(daemonPath))
-            throw new FileNotFoundException("未找到后台程序 GestureSign.exe。", daemonPath);
+            throw new FileNotFoundException("Background program GestureSign.exe was not found.", daemonPath);
 
         Directory.CreateDirectory(Path.GetDirectoryName(shortcut)!);
-        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("无法创建 WScript.Shell。");
+        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("Failed to create WScript.Shell.");
         dynamic shell = Activator.CreateInstance(shellType)!;
         dynamic link = shell.CreateShortcut(shortcut);
         link.TargetPath = daemonPath;
@@ -7186,7 +7186,7 @@ public sealed partial class MainWindow : Window
     {
         var daemonPath = FindDaemonPath();
         if (enabled && !File.Exists(daemonPath))
-            throw new FileNotFoundException("未找到后台程序 GestureSign.exe。", daemonPath);
+            throw new FileNotFoundException("Background program GestureSign.exe was not found.", daemonPath);
 
         var args = enabled
             ? $" /create /tn StartGestureSign /f /sc onlogon /rl highest /tr \"\\\"{daemonPath}\\\"\""
@@ -7199,11 +7199,11 @@ public sealed partial class MainWindow : Window
             WindowStyle = ProcessWindowStyle.Hidden
         });
         if (process is null)
-            throw new InvalidOperationException("无法启动 schtasks.exe。");
+            throw new InvalidOperationException("Failed to start schtasks.exe.");
 
         await process.WaitForExitAsync();
         if (process.ExitCode != 0)
-            throw new InvalidOperationException($"schtasks 退出代码: {process.ExitCode}");
+            throw new InvalidOperationException($"schtasks exit code: {process.ExitCode}");
     }
 
     private static string StartupShortcutPath()

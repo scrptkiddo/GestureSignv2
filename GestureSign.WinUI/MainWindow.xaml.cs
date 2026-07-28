@@ -63,6 +63,8 @@ public sealed partial class MainWindow : Window
     private const string TouchPadEdgeLeftDownGesture = "TouchPadEdge.Left.Down";
     private const string TouchPadEdgeRightUpGesture = "TouchPadEdge.Right.Up";
     private const string TouchPadEdgeRightDownGesture = "TouchPadEdge.Right.Down";
+    private const string TouchPadEdgeLeftInwardGesture = "TouchPadEdge.Left.Right";
+    private const string TouchPadEdgeRightInwardGesture = "TouchPadEdge.Right.Left";
     private const string TouchScreenEdgeTopGesture = "TouchScreenEdge.Top";
     private const string TouchScreenEdgeBottomGesture = "TouchScreenEdge.Bottom";
     private const string TouchScreenEdgeLeftGesture = "TouchScreenEdge.Left";
@@ -1524,13 +1526,15 @@ public sealed partial class MainWindow : Window
             [
                 new(L("点击", "Tap", "點擊", "タップ", "탭"), TouchPadEdgeLeftGesture),
                 new(L("上滑", "Swipe Up", "上滑", "上へスワイプ", "위로 스와이프"), TouchPadEdgeLeftUpGesture),
-                new(L("下滑", "Swipe Down", "下滑", "下へスワイプ", "아래로 스와이프"), TouchPadEdgeLeftDownGesture)
+                new(L("下滑", "Swipe Down", "下滑", "下へスワイプ", "아래로 스와이프"), TouchPadEdgeLeftDownGesture),
+                new(L("右滑", "Swipe Right", "右滑", "右へスワイプ", "오른쪽으로 스와이프"), TouchPadEdgeLeftInwardGesture)
             ]),
             new(L("右边缘", "Right Edge", "右邊緣", "右エッジ", "오른쪽 가장자리"), TouchPadEdgeMarker.None,
             [
                 new(L("点击", "Tap", "點擊", "タップ", "탭"), TouchPadEdgeRightGesture),
                 new(L("上滑", "Swipe Up", "上滑", "上へスワイプ", "위로 스와이프"), TouchPadEdgeRightUpGesture),
-                new(L("下滑", "Swipe Down", "下滑", "下へスワイプ", "아래로 스와이프"), TouchPadEdgeRightDownGesture)
+                new(L("下滑", "Swipe Down", "下滑", "下へスワイプ", "아래로 스와이프"), TouchPadEdgeRightDownGesture),
+                new(L("左滑", "Swipe Left", "左滑", "左へスワイプ", "왼쪽으로 스와이프"), TouchPadEdgeRightInwardGesture)
             ])
         ];
 

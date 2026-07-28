@@ -25,6 +25,8 @@ namespace GestureSign.Daemon.Triggers
         public const string LeftDownGestureName = "TouchPadEdge.Left.Down";
         public const string RightUpGestureName = "TouchPadEdge.Right.Up";
         public const string RightDownGestureName = "TouchPadEdge.Right.Down";
+        public const string LeftInwardGestureName = "TouchPadEdge.Left.Right";
+        public const string RightInwardGestureName = "TouchPadEdge.Right.Left";
 
         private const int EdgePercent = 8;
         private const int MaxTapTravel = 35;
@@ -234,10 +236,16 @@ namespace GestureSign.Daemon.Triggers
                 case Edge.Left:
                     if (IsVerticalSwipe(dx, dy))
                         return dy < 0 ? $"{_gesturePrefix}.Left.Up" : $"{_gesturePrefix}.Left.Down";
+                    // Swipe inward (rightward) from the left edge.
+                    if (IsHorizontalSwipe(dx, dy) && dx > 0)
+                        return $"{_gesturePrefix}.Left.Right";
                     break;
                 case Edge.Right:
                     if (IsVerticalSwipe(dx, dy))
                         return dy < 0 ? $"{_gesturePrefix}.Right.Up" : $"{_gesturePrefix}.Right.Down";
+                    // Swipe inward (leftward) from the right edge.
+                    if (IsHorizontalSwipe(dx, dy) && dx < 0)
+                        return $"{_gesturePrefix}.Right.Left";
                     break;
             }
 
@@ -287,10 +295,12 @@ namespace GestureSign.Daemon.Triggers
                 case Edge.Left:
                     yield return $"{_gesturePrefix}.Left.Up";
                     yield return $"{_gesturePrefix}.Left.Down";
+                    yield return $"{_gesturePrefix}.Left.Right";
                     break;
                 case Edge.Right:
                     yield return $"{_gesturePrefix}.Right.Up";
                     yield return $"{_gesturePrefix}.Right.Down";
+                    yield return $"{_gesturePrefix}.Right.Left";
                     break;
             }
         }

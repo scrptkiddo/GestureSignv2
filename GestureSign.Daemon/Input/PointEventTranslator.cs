@@ -14,10 +14,12 @@ namespace GestureSign.Daemon.Input
     {
         private const int CaptionButtonWidth = 180;
         private const int CaptionButtonHeight = 72;
+        private const int NewTouchGapMilliseconds = 60;
         private int _lastPointsCount;
         private HashSet<MouseActions> _pressedMouseButton;
         private System.Threading.Timer _touchPadReleaseTimer;
         private List<RawData> _lastTouchPadRawData;
+        private DateTime _lastTouchPadPacketUtc;
 
         internal Devices SourceDevice { get; private set; }
 
@@ -158,6 +160,24 @@ namespace GestureSign.Daemon.Input
 
                 int releaseCount = rawData.Count(rtd => rtd.State == 0);
 
+                // A fresh touch while the previous stroke still awaits its synthetic
+                // release must not be appended to that stroke: finalize the pending
+                // stroke first so its gesture executes, then capture the new touch.
+                if (e.SourceDevice == Devices.TouchPad)
+                {
+                    bool newTouch = _lastTouchPadRawData != null && rawData.Count > 0 && releaseCount == 0 &&
+                                    SourceDevice == Devices.TouchPad && IsNewTouchPadContactSet(rawData);
+                    _lastTouchPadPacketUtc = DateTime.UtcNow;
+                    if (newTouch)
+                    {
+                        FinalizePendingTouchPadRelease();
+                        _lastPointsCount = rawData.Count;
+                        OnPointDown(new InputPointsEventArgs(rawData, e.SourceDevice));
+                        ArmTouchPadRelease(e.SourceDevice, rawData);
+                        return;
+                    }
+                }
+
                 if (SourceDevice == Devices.None && rawData.Count > 0 && releaseCount == 0)
                 {
                     _lastPointsCount = rawData.Count;
@@ -286,6 +306,33 @@ namespace GestureSign.Daemon.Input
             }
         }
 
+        private bool IsNewTouchPadContactSet(IReadOnlyList<RawData> rawData)
+        {
+            // Reports flow continuously (~10 ms apart) while a finger stays on the
+            // pad, so a longer silence means the previous contact lifted even when
+            // no explicit release packet arrived. Disjoint contact identifiers give
+            // the same signal for a faster finger switch.
+            if ((DateTime.UtcNow - _lastTouchPadPacketUtc).TotalMilliseconds >= NewTouchGapMilliseconds)
+                return true;
+
+            var pending = _lastTouchPadRawData;
+            if (pending == null)
+                return false;
+            return rawData.All(point => pending.All(previous => previous.ContactIdentifier != point.ContactIdentifier));
+        }
+
+        private void FinalizePendingTouchPadRelease()
+        {
+            var rawData = _lastTouchPadRawData;
+            _lastTouchPadRawData = null;
+            _touchPadReleaseTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            if (rawData == null || rawData.Count == 0 || SourceDevice != Devices.TouchPad)
+                return;
+
+            OnPointUp(new InputPointsEventArgs(rawData, Devices.TouchPad));
+            _lastPointsCount = 0;
+        }
+
         private void ArmTouchPadRelease(Devices sourceDevice, IReadOnlyList<RawData> rawData)
         {
             if (sourceDevice != Devices.TouchPad)
@@ -294,7 +341,10 @@ namespace GestureSign.Daemon.Input
             _lastTouchPadRawData = rawData
                 .Select(point => new RawData(DeviceStates.None, point.ContactIdentifier, point.RawPoints))
                 .ToList();
-            _touchPadReleaseTimer.Change(450, System.Threading.Timeout.Infinite);
+            // Some Precision Touchpad drivers stop reporting instead of sending an
+            // explicit all-contacts-up packet. Keep the idle fallback short so a
+            // gesture executes soon after the finger lifts.
+            _touchPadReleaseTimer.Change(120, System.Threading.Timeout.Infinite);
         }
 
         private void ReleaseTouchPadIfIdle()

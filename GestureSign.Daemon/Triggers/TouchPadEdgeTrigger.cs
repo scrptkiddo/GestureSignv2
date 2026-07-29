@@ -3,6 +3,7 @@ using GestureSign.Common.Input;
 using GestureSign.Common.Log;
 using GestureSign.Daemon.Input;
 using GestureSign.PointPatterns;
+using ManagedWinapi.Hooks;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -72,6 +73,13 @@ namespace GestureSign.Daemon.Triggers
             _allowOppositeEdgeFallback = allowOppositeEdgeFallback;
             PointCapture.Instance.CaptureStarted += PointCapture_CaptureStarted;
             PointCapture.Instance.BeforePointsCaptured += PointCapture_BeforePointsCaptured;
+            if (_sourceDevice == Devices.TouchPad)
+            {
+                PointCapture.Instance.MouseHook.MouseMove += CursorFreezer.OnMouseMove;
+                PointCapture.Instance.MouseHook.MouseDown += CursorFreezer.OnMouseDown;
+                PointCapture.Instance.CaptureEnded += (s, args) => CursorFreezer.Release(false);
+                PointCapture.Instance.CaptureCanceled += (s, args) => CursorFreezer.Release(false);
+            }
         }
 
         private void PointCapture_CaptureStarted(object sender, PointsCapturedEventArgs e)
@@ -106,6 +114,8 @@ namespace GestureSign.Daemon.Triggers
             e.Cancel = false;
             e.ForceCapture = true;
             e.BlockTouchInputThreshold = 0;
+            if (_sourceDevice == Devices.TouchPad)
+                CursorFreezer.Freeze(edge.Value, GetBoundFreezeDirections(actionEdge));
             Logging.LogMessage($"{_logPrefix} edge capture accepted. Edge={edge}, ActionEdge={actionEdge}, Point={FormatPoint(e.Points[0].First())}");
         }
 
@@ -123,6 +133,7 @@ namespace GestureSign.Daemon.Triggers
                 if (pendingGestureName == null)
                 {
                     Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={_pendingEdgeTrigger.Edge}, Reason=NoTapOrSwipe");
+                    CursorFreezer.Release(false);
                     _pendingEdgeTrigger = null;
                     return;
                 }
@@ -132,12 +143,14 @@ namespace GestureSign.Daemon.Triggers
                 if (pendingActions == null || pendingActions.Count == 0)
                 {
                     Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={pendingGestureName}, Reason=NoAction");
+                    CursorFreezer.Release(false);
                     _pendingEdgeTrigger = null;
                     return;
                 }
 
                 Logging.LogMessage($"{_logPrefix} edge trigger fired. Edge={pendingGestureName}, Actions={pendingActions.Count}");
                 e.Cancel = true;
+                CursorFreezer.Release(false);
                 OnTriggerFired(new TriggerFiredEventArgs(pendingActions, _pendingEdgeTrigger.FiredPoint, ClonePoints(e.Points)));
                 _pendingEdgeTrigger = null;
                 return;
@@ -329,6 +342,38 @@ namespace GestureSign.Daemon.Triggers
                 .Any(name => ApplicationManager.Instance.GetRecognizedDefinedAction(name)?.Any() == true);
         }
 
+        private FreezeDirections GetBoundFreezeDirections(Edge edge)
+        {
+            var directions = FreezeDirections.None;
+            switch (edge)
+            {
+                case Edge.Left:
+                    if (HasBoundAction($"{_gesturePrefix}.Left.Up")) directions |= FreezeDirections.Up;
+                    if (HasBoundAction($"{_gesturePrefix}.Left.Down")) directions |= FreezeDirections.Down;
+                    if (HasBoundAction($"{_gesturePrefix}.Left.Right")) directions |= FreezeDirections.Inward;
+                    break;
+                case Edge.Right:
+                    if (HasBoundAction($"{_gesturePrefix}.Right.Up")) directions |= FreezeDirections.Up;
+                    if (HasBoundAction($"{_gesturePrefix}.Right.Down")) directions |= FreezeDirections.Down;
+                    if (HasBoundAction($"{_gesturePrefix}.Right.Left")) directions |= FreezeDirections.Inward;
+                    break;
+                case Edge.Top:
+                    if (HasBoundAction($"{_gesturePrefix}.Top.Left")) directions |= FreezeDirections.AlongLeft;
+                    if (HasBoundAction($"{_gesturePrefix}.Top.Right")) directions |= FreezeDirections.AlongRight;
+                    break;
+                case Edge.Bottom:
+                    if (HasBoundAction($"{_gesturePrefix}.Bottom.Left")) directions |= FreezeDirections.AlongLeft;
+                    if (HasBoundAction($"{_gesturePrefix}.Bottom.Right")) directions |= FreezeDirections.AlongRight;
+                    break;
+            }
+            return directions;
+        }
+
+        private static bool HasBoundAction(string gestureName)
+        {
+            return ApplicationManager.Instance.GetRecognizedDefinedAction(gestureName)?.Any() == true;
+        }
+
         private static Edge GetOppositeEdge(Edge edge)
         {
             switch (edge)
@@ -363,6 +408,130 @@ namespace GestureSign.Daemon.Triggers
             Bottom,
             Left,
             Right
+        }
+
+        [Flags]
+        private enum FreezeDirections
+        {
+            None = 0,
+            Up = 1 << 0,
+            Down = 1 << 1,
+            Inward = 1 << 2,
+            AlongLeft = 1 << 3,
+            AlongRight = 1 << 4
+        }
+
+        /// <summary>
+        /// Pins the cursor while a touchpad edge gesture is in flight by swallowing
+        /// mouse moves in the low-level hook. If the motion stops matching any bound
+        /// gesture direction, the freeze is released and the swallowed travel is
+        /// re-applied so ordinary pointing that starts on an edge loses nothing.
+        /// </summary>
+        private static class CursorFreezer
+        {
+            private const int DirectionSlop = 25;
+            private const int VerticalSlop = 35;
+            private const double DominanceRatio = 1.5;
+            private const int WatchdogMs = 2500;
+
+            private static readonly object SyncRoot = new object();
+            private static System.Threading.Timer _watchdog;
+            private static bool _frozen;
+            private static Edge _edge;
+            private static FreezeDirections _directions;
+            private static Point _anchor;
+            private static int _sumX;
+            private static int _sumY;
+
+            public static void Freeze(Edge edge, FreezeDirections directions)
+            {
+                lock (SyncRoot)
+                {
+                    _edge = edge;
+                    _directions = directions;
+                    _anchor = Cursor.Position;
+                    _sumX = _sumY = 0;
+                    _frozen = true;
+                    // A leaked freeze would deaden the pointer entirely, so force a
+                    // release even if every regular release path is missed.
+                    if (_watchdog == null)
+                        _watchdog = new System.Threading.Timer(o => Release(false), null, WatchdogMs, System.Threading.Timeout.Infinite);
+                    else
+                        _watchdog.Change(WatchdogMs, System.Threading.Timeout.Infinite);
+                }
+                Logging.LogMessage($"TouchPad edge cursor freeze engaged. Edge={edge}, Directions={directions}");
+            }
+
+            public static void Release(bool restore)
+            {
+                Point target;
+                lock (SyncRoot)
+                {
+                    if (!_frozen)
+                        return;
+                    _frozen = false;
+                    _watchdog?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                    target = new Point(_anchor.X + _sumX, _anchor.Y + _sumY);
+                }
+                if (restore)
+                    Cursor.Position = target;
+                Logging.LogMessage($"TouchPad edge cursor freeze released. Restore={restore}");
+            }
+
+            public static void OnMouseMove(LowLevelMouseMessage evt, ref bool handled)
+            {
+                bool abort;
+                lock (SyncRoot)
+                {
+                    if (!_frozen)
+                        return;
+                    // The cursor stays pinned at the anchor, so each hook event
+                    // carries only its own ballistic delta relative to it; the sum
+                    // is the travel the pointer would have made.
+                    _sumX += evt.Point.X - _anchor.X;
+                    _sumY += evt.Point.Y - _anchor.Y;
+                    handled = true;
+                    abort = !StillLooksLikeBoundSwipe();
+                }
+                if (abort)
+                    Release(true);
+            }
+
+            public static void OnMouseDown(LowLevelMouseMessage evt, ref bool handled)
+            {
+                Release(false);
+            }
+
+            private static bool StillLooksLikeBoundSwipe()
+            {
+                int absX = Math.Abs(_sumX);
+                int absY = Math.Abs(_sumY);
+                if (absX <= DirectionSlop && absY <= VerticalSlop)
+                    return true;
+
+                if (absY > absX * DominanceRatio)
+                {
+                    var direction = _sumY < 0 ? FreezeDirections.Up : FreezeDirections.Down;
+                    return (_directions & direction) != 0;
+                }
+
+                if (absX > absY * DominanceRatio)
+                {
+                    switch (_edge)
+                    {
+                        case Edge.Right:
+                            return _sumX < 0 && (_directions & FreezeDirections.Inward) != 0;
+                        case Edge.Left:
+                            return _sumX > 0 && (_directions & FreezeDirections.Inward) != 0;
+                        default:
+                            var along = _sumX < 0 ? FreezeDirections.AlongLeft : FreezeDirections.AlongRight;
+                            return (_directions & along) != 0;
+                    }
+                }
+
+                // A wandering diagonal is pointer movement, not a gesture.
+                return false;
+            }
         }
 
         private class PendingEdgeTrigger

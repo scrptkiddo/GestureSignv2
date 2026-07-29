@@ -33,12 +33,13 @@ namespace GestureSign.Daemon.Input
             _keyboardHook.KeyIntercepted += KeyboardHook_KeyIntercepted;
             _keyboardHook.StartHook();
             Logging.LogMessage("Keyboard hook started.");
-            if (AppConfig.DrawingButton != MouseActions.None)
-                Task.Delay(1000).ContinueWith((t) =>
-                {
-                    LowLevelMouseHook.StartHook();
-                    Logging.LogMessage($"Mouse hook started. Reason=InitialDelay, DrawingButton={AppConfig.DrawingButton}");
-                }, TaskScheduler.FromCurrentSynchronizationContext());
+            // The hook must run even with no mouse drawing button configured:
+            // touchpad edge gestures freeze the cursor by swallowing moves through it.
+            Task.Delay(1000).ContinueWith((t) =>
+            {
+                LowLevelMouseHook.StartHook();
+                Logging.LogMessage($"Mouse hook started. Reason=InitialDelay, DrawingButton={AppConfig.DrawingButton}");
+            }, TaskScheduler.FromCurrentSynchronizationContext());
 
 
             SystemEvents.SessionSwitch += new SessionSwitchEventHandler(OnSessionSwitch);
@@ -72,16 +73,9 @@ namespace GestureSign.Daemon.Input
 
         private void AppConfig_ConfigChanged(object sender, System.EventArgs e)
         {
-            if (AppConfig.DrawingButton != MouseActions.None)
-            {
-                LowLevelMouseHook.StartHook();
-                Logging.LogMessage($"Mouse hook started. Reason=ConfigChanged, DrawingButton={AppConfig.DrawingButton}");
-            }
-            else
-            {
-                LowLevelMouseHook.Unhook();
-                Logging.LogMessage("Mouse hook stopped. Reason=ConfigChanged, DrawingButton=None");
-            }
+            // Never unhook on config changes; the edge-gesture cursor freeze needs
+            // the hook regardless of DrawingButton. StartHook is a no-op when hooked.
+            LowLevelMouseHook.StartHook();
 
             UpdateDeviceState();
         }

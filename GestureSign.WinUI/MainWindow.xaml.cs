@@ -5876,13 +5876,17 @@ public sealed partial class MainWindow : Window
     private static void AddArrow(Canvas canvas, Point start, Point end, Brush brush, double thickness)
     {
         AddPreviewLine(canvas, start.X, start.Y, end.X, end.Y, brush, thickness);
-        var angle = Math.Atan2(end.Y - start.Y, end.X - start.X);
-        const double arrowLength = 9;
+        AddArrowHead(canvas, start, end, brush, thickness, 9);
+    }
+
+    private static void AddArrowHead(Canvas canvas, Point from, Point tip, Brush brush, double thickness, double length)
+    {
+        var angle = Math.Atan2(tip.Y - from.Y, tip.X - from.X);
         const double arrowAngle = Math.PI / 7;
-        var leftHead = new Point(end.X - arrowLength * Math.Cos(angle - arrowAngle), end.Y - arrowLength * Math.Sin(angle - arrowAngle));
-        var rightHead = new Point(end.X - arrowLength * Math.Cos(angle + arrowAngle), end.Y - arrowLength * Math.Sin(angle + arrowAngle));
-        AddPreviewLine(canvas, end.X, end.Y, leftHead.X, leftHead.Y, brush, thickness);
-        AddPreviewLine(canvas, end.X, end.Y, rightHead.X, rightHead.Y, brush, thickness);
+        var leftHead = new Point(tip.X - length * Math.Cos(angle - arrowAngle), tip.Y - length * Math.Sin(angle - arrowAngle));
+        var rightHead = new Point(tip.X - length * Math.Cos(angle + arrowAngle), tip.Y - length * Math.Sin(angle + arrowAngle));
+        AddPreviewLine(canvas, tip.X, tip.Y, leftHead.X, leftHead.Y, brush, thickness);
+        AddPreviewLine(canvas, tip.X, tip.Y, rightHead.X, rightHead.Y, brush, thickness);
     }
 
     private static void AddPreviewLine(Canvas canvas, double x1, double y1, double x2, double y2, Brush brush, double thickness)
@@ -5958,9 +5962,13 @@ public sealed partial class MainWindow : Window
             Color.FromArgb(255, 232, 17, 35)
         };
 
+        const double strokeThickness = 3;
+        var arrowLength = Math.Clamp(Math.Min(width, height) * 0.12, 6, 14);
+
         for (var index = 0; index < pointPatterns.Count; index++)
         {
             var line = pointPatterns[index];
+            var brush = new SolidColorBrush(colors[index % colors.Length]);
             if (line.Count == 1)
             {
                 var point = NormalizePreviewPoint(line[0], minX, minY, scaleX, scaleY, offsetX, offsetY);
@@ -5968,7 +5976,7 @@ public sealed partial class MainWindow : Window
                 {
                     Width = 8,
                     Height = 8,
-                    Fill = new SolidColorBrush(colors[index % colors.Length])
+                    Fill = brush
                 };
                 Canvas.SetLeft(dot, point.X - 4);
                 Canvas.SetTop(dot, point.Y - 4);
@@ -5978,16 +5986,44 @@ public sealed partial class MainWindow : Window
 
             var polyline = new Polyline
             {
-                Stroke = new SolidColorBrush(colors[index % colors.Length]),
-                StrokeThickness = 3,
+                Stroke = brush,
+                StrokeThickness = strokeThickness,
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round,
                 StrokeLineJoin = PenLineJoin.Round
             };
+            var mapped = new List<Point>(line.Count);
             foreach (var point in line)
-                polyline.Points.Add(NormalizePreviewPoint(point, minX, minY, scaleX, scaleY, offsetX, offsetY));
+            {
+                var previewPoint = NormalizePreviewPoint(point, minX, minY, scaleX, scaleY, offsetX, offsetY);
+                mapped.Add(previewPoint);
+                polyline.Points.Add(previewPoint);
+            }
             canvas.Children.Add(polyline);
+            AddStrokeDirectionArrow(canvas, mapped, brush, strokeThickness, arrowLength);
         }
+    }
+
+    private static void AddStrokeDirectionArrow(Canvas canvas, IReadOnlyList<Point> points, Brush brush, double thickness, double length)
+    {
+        var tip = points[^1];
+
+        // Step back along the path before taking the heading, otherwise the jitter
+        // between the last two sampled points can point the arrow the wrong way.
+        var from = points[0];
+        for (var index = points.Count - 2; index >= 0; index--)
+        {
+            from = points[index];
+            var dx = tip.X - from.X;
+            var dy = tip.Y - from.Y;
+            if (dx * dx + dy * dy >= length * length)
+                break;
+        }
+
+        if (Math.Abs(tip.X - from.X) < 0.001 && Math.Abs(tip.Y - from.Y) < 0.001)
+            return;
+
+        AddArrowHead(canvas, from, tip, brush, thickness, length);
     }
 
     private static Windows.Foundation.Point NormalizePreviewPoint((double X, double Y) point, double minX, double minY, double scaleX, double scaleY, double offsetX, double offsetY)

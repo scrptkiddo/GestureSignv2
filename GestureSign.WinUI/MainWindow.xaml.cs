@@ -366,6 +366,8 @@ public sealed partial class MainWindow : Window
 
     private void ConfigureWindow()
     {
+        // Sized and centred before maximizing so restoring down lands on these bounds
+        // rather than on whatever the shell would pick.
         AppWindow.Resize(ScaleLogicalSize(DefaultWindowWidth, DefaultWindowHeight));
         AppWindow.SetIcon("Assets/logo.ico");
         CenterWindow();
@@ -376,6 +378,7 @@ public sealed partial class MainWindow : Window
             ApplyXboxBigScreenTitleBarMode(presenter);
             presenter.PreferredMinimumWidth = ScaleLogicalLength(MinimumWindowWidth);
             presenter.PreferredMinimumHeight = ScaleLogicalLength(MinimumWindowHeight);
+            presenter.Maximize();
         }
     }
 
@@ -5876,17 +5879,13 @@ public sealed partial class MainWindow : Window
     private static void AddArrow(Canvas canvas, Point start, Point end, Brush brush, double thickness)
     {
         AddPreviewLine(canvas, start.X, start.Y, end.X, end.Y, brush, thickness);
-        AddArrowHead(canvas, start, end, brush, thickness, 9);
-    }
-
-    private static void AddArrowHead(Canvas canvas, Point from, Point tip, Brush brush, double thickness, double length)
-    {
-        var angle = Math.Atan2(tip.Y - from.Y, tip.X - from.X);
+        var angle = Math.Atan2(end.Y - start.Y, end.X - start.X);
+        const double arrowLength = 9;
         const double arrowAngle = Math.PI / 7;
-        var leftHead = new Point(tip.X - length * Math.Cos(angle - arrowAngle), tip.Y - length * Math.Sin(angle - arrowAngle));
-        var rightHead = new Point(tip.X - length * Math.Cos(angle + arrowAngle), tip.Y - length * Math.Sin(angle + arrowAngle));
-        AddPreviewLine(canvas, tip.X, tip.Y, leftHead.X, leftHead.Y, brush, thickness);
-        AddPreviewLine(canvas, tip.X, tip.Y, rightHead.X, rightHead.Y, brush, thickness);
+        var leftHead = new Point(end.X - arrowLength * Math.Cos(angle - arrowAngle), end.Y - arrowLength * Math.Sin(angle - arrowAngle));
+        var rightHead = new Point(end.X - arrowLength * Math.Cos(angle + arrowAngle), end.Y - arrowLength * Math.Sin(angle + arrowAngle));
+        AddPreviewLine(canvas, end.X, end.Y, leftHead.X, leftHead.Y, brush, thickness);
+        AddPreviewLine(canvas, end.X, end.Y, rightHead.X, rightHead.Y, brush, thickness);
     }
 
     private static void AddPreviewLine(Canvas canvas, double x1, double y1, double x2, double y2, Brush brush, double thickness)
@@ -5963,7 +5962,6 @@ public sealed partial class MainWindow : Window
         };
 
         const double strokeThickness = 3;
-        var arrowLength = Math.Clamp(Math.Min(width, height) * 0.12, 6, 14);
 
         for (var index = 0; index < pointPatterns.Count; index++)
         {
@@ -6000,13 +5998,22 @@ public sealed partial class MainWindow : Window
                 polyline.Points.Add(previewPoint);
             }
             canvas.Children.Add(polyline);
-            AddStrokeDirectionArrow(canvas, mapped, brush, strokeThickness, arrowLength);
+            AddStrokeDirectionArrow(canvas, mapped, brush, strokeThickness);
         }
     }
 
-    private static void AddStrokeDirectionArrow(Canvas canvas, IReadOnlyList<Point> points, Brush brush, double thickness, double length)
+    private static void AddStrokeDirectionArrow(Canvas canvas, IReadOnlyList<Point> points, Brush brush, double thickness)
     {
         var tip = points[^1];
+
+        // Every stroke of a gesture shares one small preview, so a stroke of a five stroke
+        // gesture ends up only a few pixels long. Size the head against its own stroke or it
+        // covers the very path it is meant to annotate.
+        var spanX = points.Max(point => point.X) - points.Min(point => point.X);
+        var spanY = points.Max(point => point.Y) - points.Min(point => point.Y);
+        var span = Math.Sqrt(spanX * spanX + spanY * spanY);
+        var headLength = Math.Clamp(span * 0.42, thickness * 1.5, thickness * 3);
+        var headHalfWidth = Math.Max(thickness * 0.9, headLength * 0.45);
 
         // Step back along the path before taking the heading, otherwise the jitter
         // between the last two sampled points can point the arrow the wrong way.
@@ -6016,14 +6023,25 @@ public sealed partial class MainWindow : Window
             from = points[index];
             var dx = tip.X - from.X;
             var dy = tip.Y - from.Y;
-            if (dx * dx + dy * dy >= length * length)
+            if (dx * dx + dy * dy >= headLength * headLength)
                 break;
         }
 
         if (Math.Abs(tip.X - from.X) < 0.001 && Math.Abs(tip.Y - from.Y) < 0.001)
             return;
 
-        AddArrowHead(canvas, from, tip, brush, thickness, length);
+        var angle = Math.Atan2(tip.Y - from.Y, tip.X - from.X);
+        var baseX = tip.X - headLength * Math.Cos(angle);
+        var baseY = tip.Y - headLength * Math.Sin(angle);
+        var normalX = -Math.Sin(angle) * headHalfWidth;
+        var normalY = Math.Cos(angle) * headHalfWidth;
+
+        // A filled head stays readable at this size; two stroked barbs blur into a blob.
+        var head = new Microsoft.UI.Xaml.Shapes.Polygon { Fill = brush };
+        head.Points.Add(tip);
+        head.Points.Add(new Point(baseX + normalX, baseY + normalY));
+        head.Points.Add(new Point(baseX - normalX, baseY - normalY));
+        canvas.Children.Add(head);
     }
 
     private static Windows.Foundation.Point NormalizePreviewPoint((double X, double Y) point, double minX, double minY, double scaleX, double scaleY, double offsetX, double offsetY)

@@ -6012,8 +6012,9 @@ public sealed partial class MainWindow : Window
         var spanX = points.Max(point => point.X) - points.Min(point => point.X);
         var spanY = points.Max(point => point.Y) - points.Min(point => point.Y);
         var span = Math.Sqrt(spanX * spanX + spanY * spanY);
-        var headLength = Math.Clamp(span * 0.42, thickness * 1.5, thickness * 3);
-        var headHalfWidth = Math.Max(thickness * 0.9, headLength * 0.45);
+        var headLength = Math.Clamp(span * 0.45, thickness * 1.7, thickness * 3.2);
+        // Wide enough to read as an arrow rather than a bulge in the line.
+        var headHalfWidth = Math.Max(thickness * 1.2, headLength * 0.55);
 
         // Step back along the path before taking the heading, otherwise the jitter
         // between the last two sampled points can point the arrow the wrong way.

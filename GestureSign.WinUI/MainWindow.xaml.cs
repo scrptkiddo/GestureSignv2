@@ -2620,8 +2620,11 @@ public sealed partial class MainWindow : Window
         if (!await ConfirmDialogAsync($"Add action to {app.Name}", panel, "Add"))
             return;
 
+        // Keep single point strokes: a tap is a real part of a gesture, not noise. The
+        // stock Two/Three/Four/Five-Finger Tap gestures are nothing but single point
+        // strokes, and the preview already draws them as a dot.
         var validDrawnPointPatterns = drawnPointPatterns
-            .Where(pattern => pattern.Count >= 2)
+            .Where(pattern => pattern.Count >= 1)
             .Cast<IReadOnlyList<(double X, double Y)>>()
             .ToList();
         if (validDrawnPointPatterns.Count > 0)
@@ -2715,8 +2718,11 @@ public sealed partial class MainWindow : Window
         if (!await ConfirmDialogAsync($"Edit action {DisplayName(action.Name)}", panel, "Save"))
             return;
 
+        // Keep single point strokes: a tap is a real part of a gesture, not noise. The
+        // stock Two/Three/Four/Five-Finger Tap gestures are nothing but single point
+        // strokes, and the preview already draws them as a dot.
         var validDrawnPointPatterns = drawnPointPatterns
-            .Where(pattern => pattern.Count >= 2)
+            .Where(pattern => pattern.Count >= 1)
             .Cast<IReadOnlyList<(double X, double Y)>>()
             .ToList();
         if (validDrawnPointPatterns.Count > 0)

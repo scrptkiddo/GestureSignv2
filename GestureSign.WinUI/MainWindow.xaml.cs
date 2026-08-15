@@ -7181,9 +7181,9 @@ public sealed partial class MainWindow : Window
                 return true;
 
             var daemonPath = FindDaemonPath();
-            if (daemonPath is null)
+            if (!File.Exists(daemonPath))
             {
-                LogWinUiDaemonMessage("Daemon start skipped. Reason=NotFound");
+                LogWinUiDaemonMessage($"Daemon start skipped. Reason=NotFound, Path={daemonPath}");
                 return false;
             }
 
@@ -7281,17 +7281,71 @@ public sealed partial class MainWindow : Window
     {
         var baseDirectory = AppContext.BaseDirectory;
         var packageDirectory = Environment.GetEnvironmentVariable("GESTURESIGN_PACKAGE_DIR");
-        var candidates = new List<string>
-        {
-            Path.Combine(baseDirectory, "GestureSign.exe"),
-            Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "bin", "Release", "GestureSign.exe")),
-            Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "..", "bin", "Release", "GestureSign.exe"))
-        };
+        var candidates = new List<string> { Path.Combine(baseDirectory, "GestureSign.exe") };
 
         if (!string.IsNullOrWhiteSpace(packageDirectory))
-            candidates.Insert(1, Path.Combine(packageDirectory, "GestureSign.exe"));
+            candidates.Add(Path.Combine(packageDirectory, "GestureSign.exe"));
+
+        // An installed copy keeps the settings app and the daemon in separate folders, so the
+        // daemon is not next to this executable. The settings app ships in "<name>-WinUI" while
+        // the daemon ships in "<name>", so probe that sibling before the dev tree layouts.
+        var siblingDaemon = SiblingDaemonPath(baseDirectory);
+        if (siblingDaemon != null)
+            candidates.Add(siblingDaemon);
+
+        candidates.Add(Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "bin", "Release", "GestureSign.exe")));
+        candidates.Add(Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "..", "bin", "Release", "GestureSign.exe")));
+
+        // Folder names are chosen when the build is unpacked, so fall back to the startup
+        // shortcut, which records where the daemon actually lives.
+        var shortcutDaemon = StartupShortcutDaemonPath();
+        if (shortcutDaemon != null)
+            candidates.Add(shortcutDaemon);
 
         return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+    }
+
+    private static string? SiblingDaemonPath(string baseDirectory)
+    {
+        try
+        {
+            const string winUiSuffix = "-WinUI";
+            var directory = new DirectoryInfo(baseDirectory);
+            if (directory.Parent is null || !directory.Name.EndsWith(winUiSuffix, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var daemonFolder = directory.Name.Substring(0, directory.Name.Length - winUiSuffix.Length);
+            return daemonFolder.Length == 0
+                ? null
+                : Path.Combine(directory.Parent.FullName, daemonFolder, "GestureSign.exe");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? StartupShortcutDaemonPath()
+    {
+        try
+        {
+            var shortcut = StartupShortcutPath();
+            if (!File.Exists(shortcut))
+                return null;
+
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null)
+                return null;
+
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic link = shell.CreateShortcut(shortcut);
+            string target = link.TargetPath;
+            return string.IsNullOrWhiteSpace(target) ? null : target;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task<PickedWindowInfo?> PickWindowByClickAsync()

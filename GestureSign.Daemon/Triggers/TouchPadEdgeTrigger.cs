@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace GestureSign.Daemon.Triggers
@@ -125,16 +126,19 @@ namespace GestureSign.Daemon.Triggers
             if (pointCapture.Mode == CaptureMode.Training || pointCapture.SourceDevice != _sourceDevice)
                 return;
 
-            if (_pendingEdgeTrigger != null)
+            // This handler also runs on the idle-release timer thread, so PointCapture_CaptureStarted
+            // can clear _pendingEdgeTrigger from the input thread part way through. Take the pending
+            // trigger once and work from the local copy, otherwise a later read can be null.
+            var pendingEdgeTrigger = Interlocked.Exchange(ref _pendingEdgeTrigger, null);
+            if (pendingEdgeTrigger != null)
             {
                 var pendingGestureName = e.Points == null || e.Points.Count != 1 || e.Points[0].Count == 0
                     ? null
-                    : GetEdgeGestureName(_pendingEdgeTrigger.Edge, e.Points[0]);
+                    : GetEdgeGestureName(pendingEdgeTrigger.Edge, e.Points[0]);
                 if (pendingGestureName == null)
                 {
-                    Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={_pendingEdgeTrigger.Edge}, Reason=NoTapOrSwipe");
+                    Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={pendingEdgeTrigger.Edge}, Reason=NoTapOrSwipe");
                     CursorFreezer.Release(false);
-                    _pendingEdgeTrigger = null;
                     return;
                 }
 
@@ -144,17 +148,18 @@ namespace GestureSign.Daemon.Triggers
                 {
                     Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={pendingGestureName}, Reason=NoAction");
                     CursorFreezer.Release(false);
-                    _pendingEdgeTrigger = null;
                     return;
                 }
 
                 Logging.LogMessage($"{_logPrefix} edge trigger fired. Edge={pendingGestureName}, Actions={pendingActions.Count}");
                 e.Cancel = true;
                 CursorFreezer.Release(false);
-                OnTriggerFired(new TriggerFiredEventArgs(pendingActions, _pendingEdgeTrigger.FiredPoint, ClonePoints(e.Points)));
-                _pendingEdgeTrigger = null;
+                OnTriggerFired(new TriggerFiredEventArgs(pendingActions, pendingEdgeTrigger.FiredPoint, ClonePoints(e.Points)));
                 return;
             }
+
+            if (e.Points == null || e.Points.Count == 0 || e.Points[0] == null || e.Points[0].Count == 0)
+                return;
 
             var edgeGestureName = GetEdgeGestureName(e.Points[0]);
             if (edgeGestureName == null)

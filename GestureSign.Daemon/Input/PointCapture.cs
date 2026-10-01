@@ -645,6 +645,7 @@ namespace GestureSign.Daemon.Input
             if (pointsInformation.Cancel)
             {
                 Logging.LogMessage("Gesture capture canceled after preprocessing.");
+                ClearCapturedPoints();
                 return;
             }
 
@@ -672,6 +673,14 @@ namespace GestureSign.Daemon.Input
 
             OnAfterPointsCaptured(pointsInformation);
 
+            ClearCapturedPoints();
+        }
+
+        // Every way out of EndCapture must clear the strokes. PointEventTranslator reads
+        // leftover strokes as a gesture still in progress, so a later finger landing after
+        // the first is treated as a move and the multi-finger gesture never starts.
+        private void ClearCapturedPoints()
+        {
             _pointsCaptured.Clear();
             _touchPadRawStartPoints = null;
             _touchPadVisualPoints = null;

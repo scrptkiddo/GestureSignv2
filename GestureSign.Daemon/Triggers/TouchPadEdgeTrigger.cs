@@ -33,6 +33,9 @@ namespace GestureSign.Daemon.Triggers
         private const int EdgePercent = 8;
         private const int MaxTapTravel = 35;
         private const int MinSwipeTravel = 90;
+        // A single finger on the touchpad has to stay plain pointing, even when it starts
+        // on an edge, so touchpad edge gestures take two. Touchscreen and mouse keep one.
+        private const int TouchPadContactCount = 2;
         private const int CaptionButtonWidth = 180;
         private const int CaptionButtonHeight = 72;
         private readonly Devices _sourceDevice;
@@ -44,6 +47,7 @@ namespace GestureSign.Daemon.Triggers
         private readonly double _swipeDominanceRatio;
         private readonly bool _allowCornerEdges;
         private readonly bool _allowOppositeEdgeFallback;
+        private readonly int _contactCount;
         private PendingEdgeTrigger _pendingEdgeTrigger;
 
         public TouchPadEdgeTrigger()
@@ -72,6 +76,7 @@ namespace GestureSign.Daemon.Triggers
             _swipeDominanceRatio = swipeDominanceRatio;
             _allowCornerEdges = allowCornerEdges;
             _allowOppositeEdgeFallback = allowOppositeEdgeFallback;
+            _contactCount = sourceDevice == Devices.TouchPad ? TouchPadContactCount : 1;
             PointCapture.Instance.CaptureStarted += PointCapture_CaptureStarted;
             PointCapture.Instance.BeforePointsCaptured += PointCapture_BeforePointsCaptured;
             if (_sourceDevice == Devices.TouchPad)
@@ -91,13 +96,13 @@ namespace GestureSign.Daemon.Triggers
             if (pointCapture.Mode == CaptureMode.Training || pointCapture.SourceDevice != _sourceDevice)
                 return;
 
-            if (e.Points == null || e.Points.Count != 1 || e.Points[0].Count == 0)
+            if (!HasContactCount(e.Points))
                 return;
 
-            var edge = GetStartEdge(e.Points[0].First());
+            var edge = GetStartEdge(e.Points);
             if (edge == null)
             {
-                Logging.LogMessage($"{_logPrefix} edge capture ignored. Reason=NotOnEdge, Point={FormatPoint(e.Points[0].First())}");
+                Logging.LogMessage($"{_logPrefix} edge capture ignored. Reason=NotOnEdge, Point={FormatStartPoints(e.Points)}");
                 return;
             }
 
@@ -107,7 +112,7 @@ namespace GestureSign.Daemon.Triggers
                 .Any(name => ApplicationManager.Instance.GetRecognizedDefinedAction(name)?.Any() == true);
             if (!hasAnyAction)
             {
-                Logging.LogMessage($"{_logPrefix} edge capture ignored. Reason=NoAction, Edge={edge}, Point={FormatPoint(e.Points[0].First())}");
+                Logging.LogMessage($"{_logPrefix} edge capture ignored. Reason=NoAction, Edge={edge}, Point={FormatStartPoints(e.Points)}");
                 return;
             }
 
@@ -115,9 +120,10 @@ namespace GestureSign.Daemon.Triggers
             e.Cancel = false;
             e.ForceCapture = true;
             e.BlockTouchInputThreshold = 0;
-            if (_sourceDevice == Devices.TouchPad)
+            // Only a single finger drags the pointer; two fingers make the system scroll instead.
+            if (_sourceDevice == Devices.TouchPad && _contactCount == 1)
                 CursorFreezer.Freeze(edge.Value, GetBoundFreezeDirections(actionEdge));
-            Logging.LogMessage($"{_logPrefix} edge capture accepted. Edge={edge}, ActionEdge={actionEdge}, Point={FormatPoint(e.Points[0].First())}");
+            Logging.LogMessage($"{_logPrefix} edge capture accepted. Edge={edge}, ActionEdge={actionEdge}, Point={FormatStartPoints(e.Points)}");
         }
 
         private void PointCapture_BeforePointsCaptured(object sender, PointsCapturedEventArgs e)
@@ -132,9 +138,9 @@ namespace GestureSign.Daemon.Triggers
             var pendingEdgeTrigger = Interlocked.Exchange(ref _pendingEdgeTrigger, null);
             if (pendingEdgeTrigger != null)
             {
-                var pendingGestureName = e.Points == null || e.Points.Count != 1 || e.Points[0].Count == 0
-                    ? null
-                    : GetEdgeGestureName(pendingEdgeTrigger.Edge, e.Points[0]);
+                var pendingGestureName = HasContactCount(e.Points)
+                    ? GetEdgeGestureName(pendingEdgeTrigger.Edge, e.Points)
+                    : null;
                 if (pendingGestureName == null)
                 {
                     Logging.LogMessage($"{_logPrefix} edge trigger canceled. Edge={pendingEdgeTrigger.Edge}, Reason=NoTapOrSwipe");
@@ -158,10 +164,10 @@ namespace GestureSign.Daemon.Triggers
                 return;
             }
 
-            if (e.Points == null || e.Points.Count == 0 || e.Points[0] == null || e.Points[0].Count == 0)
+            if (!HasContactCount(e.Points))
                 return;
 
-            var edgeGestureName = GetEdgeGestureName(e.Points[0]);
+            var edgeGestureName = GetEdgeGestureName(e.Points);
             if (edgeGestureName == null)
                 return;
 
@@ -180,10 +186,32 @@ namespace GestureSign.Daemon.Triggers
             return points?.Select(stroke => stroke?.ToList() ?? new List<Point>()).ToList();
         }
 
-        private string GetEdgeGestureName(List<Point> points)
+        private bool HasContactCount(List<List<Point>> points)
         {
-            var edge = GetStartEdge(points.First());
+            return points != null && points.Count == _contactCount && points.All(stroke => stroke != null && stroke.Count > 0);
+        }
+
+        private string GetEdgeGestureName(List<List<Point>> points)
+        {
+            var edge = GetStartEdge(points);
             return edge == null ? null : GetEdgeGestureName(edge.Value, points);
+        }
+
+        private Edge? GetStartEdge(List<List<Point>> points)
+        {
+            // Two fingers side by side do not both fit in the narrow edge zone, so the
+            // fingers that start inside one pick the edge and the others may rest further in.
+            Edge? edge = null;
+            foreach (var stroke in points)
+            {
+                var strokeEdge = GetStartEdge(stroke.First());
+                if (strokeEdge == null)
+                    continue;
+                if (edge != null && edge != strokeEdge)
+                    return null;
+                edge = strokeEdge;
+            }
+            return edge;
         }
 
         private Edge? GetStartEdge(Point start)
@@ -232,10 +260,11 @@ namespace GestureSign.Daemon.Triggers
             return null;
         }
 
-        private string GetEdgeGestureName(Edge edge, List<Point> points)
+        private string GetEdgeGestureName(Edge edge, List<List<Point>> points)
         {
-            var start = points.First();
-            var end = points.Last();
+            // The fingers move as one hand, so classify the travel of their midpoint.
+            var start = GetMidpoint(points.Select(stroke => stroke.First()));
+            var end = GetMidpoint(points.Select(stroke => stroke.Last()));
             var dx = end.X - start.X;
             var dy = end.Y - start.Y;
             if (PointPatternMath.GetDistance(start, end) <= _maxTapTravel)
@@ -396,9 +425,20 @@ namespace GestureSign.Daemon.Triggers
             }
         }
 
+        private static Point GetMidpoint(IEnumerable<Point> points)
+        {
+            var list = points.ToList();
+            return new Point((int)Math.Round(list.Average(point => point.X)), (int)Math.Round(list.Average(point => point.Y)));
+        }
+
         private static string FormatPoint(Point point)
         {
             return $"{point.X},{point.Y}";
+        }
+
+        private static string FormatStartPoints(List<List<Point>> points)
+        {
+            return string.Join(";", points.Select(stroke => FormatPoint(stroke.First())));
         }
 
         private static bool IsCaptionButtonRegion(Rectangle bounds, int x, int y)

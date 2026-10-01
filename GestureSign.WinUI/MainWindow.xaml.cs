@@ -65,6 +65,9 @@ public sealed partial class MainWindow : Window
     private const string TouchPadEdgeRightDownGesture = "TouchPadEdge.Right.Down";
     private const string TouchPadEdgeLeftInwardGesture = "TouchPadEdge.Left.Right";
     private const string TouchPadEdgeRightInwardGesture = "TouchPadEdge.Right.Left";
+    // Must match TouchPadContactCount in the daemon's TouchPadEdgeTrigger.
+    private const int TouchPadEdgeFingers = 2;
+    private const double PreviewFingerGap = 13;
     private const string TouchScreenEdgeTopGesture = "TouchScreenEdge.Top";
     private const string TouchScreenEdgeBottomGesture = "TouchScreenEdge.Bottom";
     private const string TouchScreenEdgeLeftGesture = "TouchScreenEdge.Left";
@@ -956,7 +959,7 @@ public sealed partial class MainWindow : Window
         var panel = NewCardPanel(14);
         panel.Children.Add(new TextBlock
         {
-            Text = L("触控板边缘", "Touchpad Edges", "觸控板邊緣", "タッチパッドのエッジ", "터치패드 가장자리"),
+            Text = L("触控板边缘（双指）", "Touchpad Edges (two fingers)", "觸控板邊緣（雙指）", "タッチパッドのエッジ（2 本指）", "터치패드 가장자리(두 손가락)"),
             Style = BodyStrongTextBlockStyle
         });
 
@@ -5783,9 +5786,9 @@ public sealed partial class MainWindow : Window
         AddEdgeHighlight(canvas, edge, left, top, right, bottom, accent);
 
         if (string.IsNullOrWhiteSpace(direction))
-            AddTapDot(canvas, edge, left, top, right, bottom, accent);
+            AddTapDot(canvas, edge, left, top, right, bottom, accent, TouchPadEdgeFingers);
         else
-            AddEdgeArrow(canvas, edge, direction, left, top, right, bottom, accent, secondary);
+            AddEdgeArrow(canvas, edge, direction, left, top, right, bottom, accent, secondary, TouchPadEdgeFingers);
     }
 
     private static bool TryParseEdgeGesture(string gestureName, out bool isTouchScreen, out bool isTouchPad, out string edge, out string direction)
@@ -5827,7 +5830,7 @@ public sealed partial class MainWindow : Window
             AddPreviewLine(canvas, right - inset, top + 8, right - inset, bottom - 8, brush, 4);
     }
 
-    private static void AddTapDot(Canvas canvas, string edge, double left, double top, double right, double bottom, Brush brush)
+    private static void AddTapDot(Canvas canvas, string edge, double left, double top, double right, double bottom, Brush brush, int fingers = 1)
     {
         var x = (left + right) / 2;
         var y = (top + bottom) / 2;
@@ -5840,46 +5843,57 @@ public sealed partial class MainWindow : Window
         else if (edge.Equals("Right", StringComparison.OrdinalIgnoreCase))
             x = right - 12;
 
-        var dot = new Microsoft.UI.Xaml.Shapes.Ellipse
+        // Several fingers sit side by side along the edge, centred on the one-finger spot.
+        var alongX = edge.Equals("Top", StringComparison.OrdinalIgnoreCase) || edge.Equals("Bottom", StringComparison.OrdinalIgnoreCase);
+        for (var finger = 0; finger < fingers; finger++)
         {
-            Width = 9,
-            Height = 9,
-            Fill = brush
-        };
-        Canvas.SetLeft(dot, x - 4.5);
-        Canvas.SetTop(dot, y - 4.5);
-        canvas.Children.Add(dot);
+            var along = (finger - (fingers - 1) / 2.0) * PreviewFingerGap;
+            var dot = new Microsoft.UI.Xaml.Shapes.Ellipse
+            {
+                Width = 9,
+                Height = 9,
+                Fill = brush
+            };
+            Canvas.SetLeft(dot, (alongX ? x + along : x) - 4.5);
+            Canvas.SetTop(dot, (alongX ? y : y + along) - 4.5);
+            canvas.Children.Add(dot);
+        }
     }
 
-    private static void AddEdgeArrow(Canvas canvas, string edge, string direction, double left, double top, double right, double bottom, Brush brush, Brush secondaryBrush)
+    private static void AddEdgeArrow(Canvas canvas, string edge, string direction, double left, double top, double right, double bottom, Brush brush, Brush secondaryBrush, int fingers = 1)
     {
         var midX = (left + right) / 2;
         var midY = (top + bottom) / 2;
-        Point start;
-        Point end;
-        if (direction.Equals("Left", StringComparison.OrdinalIgnoreCase) || direction.Equals("Right", StringComparison.OrdinalIgnoreCase))
+        // Several fingers are parallel arrows, each one step further from the border the first arrow hugs.
+        for (var finger = 0; finger < fingers; finger++)
         {
-            var y = edge.Equals("Bottom", StringComparison.OrdinalIgnoreCase) ? bottom - 15 : top + 15;
-            start = direction.Equals("Left", StringComparison.OrdinalIgnoreCase) ? new Point(right - 22, y) : new Point(left + 22, y);
-            end = direction.Equals("Left", StringComparison.OrdinalIgnoreCase) ? new Point(left + 22, y) : new Point(right - 22, y);
-        }
-        else
-        {
-            var x = edge.Equals("Right", StringComparison.OrdinalIgnoreCase) ? right - 15 : left + 15;
-            start = direction.Equals("Up", StringComparison.OrdinalIgnoreCase) ? new Point(x, bottom - 16) : new Point(x, top + 16);
-            end = direction.Equals("Up", StringComparison.OrdinalIgnoreCase) ? new Point(x, top + 16) : new Point(x, bottom - 16);
-        }
+            var step = finger * PreviewFingerGap;
+            Point start;
+            Point end;
+            if (direction.Equals("Left", StringComparison.OrdinalIgnoreCase) || direction.Equals("Right", StringComparison.OrdinalIgnoreCase))
+            {
+                var y = edge.Equals("Bottom", StringComparison.OrdinalIgnoreCase) ? bottom - 15 - step : top + 15 + step;
+                start = direction.Equals("Left", StringComparison.OrdinalIgnoreCase) ? new Point(right - 22, y) : new Point(left + 22, y);
+                end = direction.Equals("Left", StringComparison.OrdinalIgnoreCase) ? new Point(left + 22, y) : new Point(right - 22, y);
+            }
+            else
+            {
+                var x = edge.Equals("Right", StringComparison.OrdinalIgnoreCase) ? right - 15 - step : left + 15 + step;
+                start = direction.Equals("Up", StringComparison.OrdinalIgnoreCase) ? new Point(x, bottom - 16) : new Point(x, top + 16);
+                end = direction.Equals("Up", StringComparison.OrdinalIgnoreCase) ? new Point(x, top + 16) : new Point(x, bottom - 16);
+            }
 
-        AddArrow(canvas, start, end, brush, 3.8);
-        var origin = new Microsoft.UI.Xaml.Shapes.Ellipse
-        {
-            Width = 7,
-            Height = 7,
-            Fill = secondaryBrush
-        };
-        Canvas.SetLeft(origin, start.X - 3.5);
-        Canvas.SetTop(origin, start.Y - 3.5);
-        canvas.Children.Add(origin);
+            AddArrow(canvas, start, end, brush, 3.8);
+            var origin = new Microsoft.UI.Xaml.Shapes.Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = secondaryBrush
+            };
+            Canvas.SetLeft(origin, start.X - 3.5);
+            Canvas.SetTop(origin, start.Y - 3.5);
+            canvas.Children.Add(origin);
+        }
     }
 
     private static void AddArrow(Canvas canvas, Point start, Point end, Brush brush, double thickness)
